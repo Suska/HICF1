@@ -33,11 +33,11 @@ boxplot2(age_ar ~ gender, data = clinicaldata, main = "Gender ~ age", col = c("b
 
 ```r
 # same with ggplot2
-p <- ggplot(clinicaldata, aes(gender, age_ar))
+g <- ggplot(clinicaldata, aes(gender, age_ar))
 give.n <- function(x) {
     return(c(y = mean(x), label = length(x)))
 }
-p + geom_boxplot(varwidth = "T", col = c("blue", "red")) + stat_summary(fun.data = give.n, 
+g + geom_boxplot(col = c("darkblue", "darkred")) + stat_summary(fun.data = give.n, 
     geom = "text")
 ```
 
@@ -65,9 +65,12 @@ t.test(age_ar ~ gender, data = clinicaldata)  # where y is numeric and x is a bi
 Is there an age difference between treatments?
 
 ```r
-boxplot2(age_ar ~ treatment, data = clinicaldata, main = "Treatment ~ age", 
-    col = c("purple", "green", "yellow"), xlab = "treatment", ylab = "age", 
-    top = TRUE, varwidth = "T")
+t <- ggplot(clinicaldata, aes(treatment, age_ar))
+give.n <- function(x) {
+    return(c(y = mean(x), label = length(x)))
+}
+t + geom_boxplot(col = c("purple", "darkgreen", "yellow")) + stat_summary(fun.data = give.n, 
+    geom = "text") + ggtitle("Treatment ~ age") + ylab("Age (years)")
 ```
 
 ![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3.png) 
@@ -85,31 +88,80 @@ oneway.test(age_ar ~ treatment, data = clinicaldata)  # where y is numeric and x
 ## F = 0.2384, num df = 2.00, denom df = 55.39, p-value = 0.7887
 ```
 
-Is there an age difference between MRD outcome and response?
+Is there an age difference between MRD outcome?
 
 ```r
-boxplot2(age_ar ~ mrd, data = clinicaldata, main = "MRD ~ age", col = c("red", 
-    "grey", "yellow"), xlab = "MRD", ylab = "age", top = TRUE, varwidth = "T")
+clinicaldata_mrd <- na.omit(clinicaldata[, c("mrd", "age_ar")])
+m <- ggplot(clinicaldata_mrd, aes(mrd, age_ar))
+give.n <- function(x) {
+    return(c(y = mean(x), label = length(x)))
+}
+m + geom_boxplot(col = c("black", "purple")) + stat_summary(fun.data = give.n, 
+    geom = "text") + ggtitle("MRD ~ age") + ylab("Age (years)")
 ```
 
 ![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4.png) 
 
 ```r
 # independent multi-group Welsh ANOVA
-oneway.test(age_ar ~ treatment, data = clinicaldata)  # where y is numeric and x is a binary factor
+t.test(age_ar ~ mrd, data = clinicaldata)
 ```
 
 ```
 ## 
-## 	One-way analysis of means (not assuming equal variances)
+## 	Welch Two Sample t-test
 ## 
-## data:  age_ar and treatment
-## F = 0.2384, num df = 2.00, denom df = 55.39, p-value = 0.7887
+## data:  age_ar by mrd
+## t = 1.415, df = 328.2, p-value = 0.1581
+## alternative hypothesis: true difference in means is not equal to 0
+## 95 percent confidence interval:
+##  -0.4943  3.0255
+## sample estimates:
+## mean in group positive mean in group negative 
+##                  63.32                  62.05
+```
+
+Is there an age difference between response?
+- Note here that there are only few datapoints for SD, PD and CR_CRi, and PD seem to be older
+- Unfortunately, those might be also very interesting cases...
+
+```r
+clinicaldata_response <- na.omit(clinicaldata[, c("response", "age_ar")])
+r <- ggplot(clinicaldata_response, aes(response, age_ar))
+give.n <- function(x) {
+    return(c(y = mean(x), label = length(x)))
+}
+r + geom_violin(fill = "grey80", colour = "#3366FF") + stat_summary(fun.data = give.n, 
+    geom = "text") + ggtitle("Response ~ age") + ylab("Age (years)")
+```
+
+![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5.png) 
+
+```r
+# pairwise Wilcoxon Test with plain Bonferroni
+pairwise.wilcox.test(clinicaldata$age, clinicaldata$response, p.adjust.method = "bonferroni", 
+    paired = FALSE)
+```
+
+```
+## Warning: cannot compute exact p-value with ties
+```
+
+```
+## 
+## 	Pairwise comparisons using Wilcoxon rank sum test 
+## 
+## data:  clinicaldata$age and clinicaldata$response 
+## 
+##               CR   CR_incomplete PR   SD   PD  
+## CR_incomplete 1.00 -             -    -    -   
+## PR            1.00 1.00          -    -    -   
+## SD            1.00 1.00          1.00 -    -   
+## PD            0.16 0.19          0.96 0.24 -   
+## CR_Cri        0.37 0.47          1.00 0.20 1.00
+## 
+## P value adjustment method: bonferroni
 ```
 
 
-
-- possible confounding factors (age, gender,...)
-- treatment groups
-
-
+NExt: Put test and test result into table, build model with age as response??
