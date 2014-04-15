@@ -1,14 +1,19 @@
 HICF1 - connecting clinical data with WGA data
 ========================================================
-  
-  Import clinical data
+
+Import clinical data
 
 ```{r}
-clinicaldata = read.table("HICF1_clinicaldata.txt", header = TRUE, sep = "\t")
+clinicaldata = read.table("/home/suska/work/HICF1/HICF1_clinicaldata/HICF1_clinicaldata_raw/HICF1_clinicaldata.txt", header = TRUE, sep = "\t")
 clinicaldata[clinicaldata=="9876"]<-NA
 ```
 
-Convert date info in format 'mm/dd/yyyy' and remove corresponding string afterwards, recalculate age at randomisation to one digit, remove double columns, rearrange columns
+Data cleaning
+-------------
+- Convert date info in format 'mm/dd/yyyy' & remove corresponding string afterwards
+- Recalculate age at randomisation to one digit
+- Convert int to factors with the correct levels
+- Rearrange columns
 
 ```{r}
 strDates <- clinicaldata$patient_date_of_birth
@@ -19,7 +24,7 @@ strDates_dor <- clinicaldata$date_of_randomisation
 clinicaldata$dor <- as.Date(strDates_dor, "%d/%m/%Y")
 clinicaldata$date_of_randomisation <- NULL 
 
-clinicaldata$age_ar <-round(((difftime(clinicaldata$dor, clinicaldata$dob, units='weeks'))/ 52), digits = 1)
+clinicaldata$age_ar <-as.integer(round(((difftime(clinicaldata$dor, clinicaldata$dob, units='weeks'))/ 52), digits = 1))
 clinicaldata$age_at_randomisation <- NULL
 
 clinicaldata$ID <- paste(clinicaldata$trial, clinicaldata$clinical_trial_id)
@@ -37,14 +42,39 @@ clinicaldata$vh_id <- NULL
 
 clinicaldata$vh3 <- factor(clinicaldata$vh3.21, labels = c("mutated", "unmutated"))
 
-clinicaldata$mrd <- factor(clinicaldata$mrd_id, labels = c("positive", "negative", "NA", "NA", "NA"))
+apply(clinicaldata, 1, if clinicaldata$mrd_id )
+clinicaldata$mrd <- factor(clinicaldata$mrd_id, labels = c("positive", "negative", "NA"))
 clinicaldata$mrd_id <- NULL
 
 clinicaldata$response <- factor(clinicaldata$final_response_id, labels = c("CR", "CR_incomplete", "PR", "SD", "PD", "NA", "NA", "NA", "CR_Cri"))
+clinicaldata$final_response_id <- NULL
+
+clinicaldata <- clinicaldata[c("ID", "gender", "dob", "dor", "age_ar", "treatment", "mrd", "response", "vhmut", "vh3", "vh3.21", "vh_mutation_.", "X13q14_deleted", "X13q14_._deleted", "trisomy12", "trisomy_._abnormal", "X11q23_deleted", "X11q23_._deleted", "X17p_deleted", "X17p_._deleted", "cd38...")]	
 ```
 
-Rearrange collumns
+Descriptive overview - check for confounding factors?
+---------------------------
 
-Overview of the data
--> possible confounding factors (age, sex, ethnicity)
--> treatment groups
+Is there an age difference between males and females?
+```{r}
+#using gplots package here
+boxplot2(age_ar ~ gender, data=clinicaldata, main="Gender ~ age", col=c("blue", "red"), xlab="gender", ylab="age", top=TRUE, varwidth="T")
+# independent 2-group t-test with unequal variance (Welsh mod)
+t.test(age_ar~gender, data=clinicaldata) # where y is numeric and x is a binary factor
+```
+Is there an age difference between treatments?
+```{r}
+boxplot2(age_ar ~ treatment, data=clinicaldata, main="Treatment ~ age", col=c("purple", "green", "yellow"), xlab="treatment", ylab="age", top=TRUE, varwidth="T")
+# independent multi-group Welsh ANOVA
+oneway.test(age_ar ~ treatment, data=clinicaldata) # where y is numeric and x is a binary factor
+```
+Is there an age difference between MRD outcome and response?
+```{r}
+boxplot2(age_ar ~ mrd, data=clinicaldata, main="MRD ~ age", col=c("red", "grey", "yellow"), xlab="MRD", ylab="age", top=TRUE, varwidth="T")
+# independent multi-group Welsh ANOVA
+oneway.test(age_ar ~ treatment, data=clinicaldata) # where y is numeric and x is a binary factor
+```
+
+
+- possible confounding factors (age, gender,...)
+- treatment groups

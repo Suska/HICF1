@@ -183,112 +183,67 @@ hljs.initHighlightingOnLoad();
 
 <p>Import clinical data</p>
 
-<pre><code class="r">clinicaldata = read.table(&quot;HICF1_clinicaldata.txt&quot;, header = TRUE, sep = &quot;\t&quot;)
+<pre><code class="r">clinicaldata = read.table(&quot;/home/suska/work/HICF1/HICF1_clinicaldata/HICF1_clinicaldata_raw/HICF1_clinicaldata.txt&quot;, 
+    header = TRUE, sep = &quot;\t&quot;)
+clinicaldata[clinicaldata == &quot;9876&quot;] &lt;- NA
 </code></pre>
 
-<pre><code>## Warning: cannot open file &#39;HICF1_clinicaldata.txt&#39;: No such file or
-## directory
-</code></pre>
+<h2>Data cleaning</h2>
 
-<pre><code>## Error: cannot open the connection
-</code></pre>
-
-<pre><code class="r">clinicaldata[clinicaldata == &quot;9876&quot;] &lt;- NA
-</code></pre>
-
-<pre><code>## Error: object &#39;clinicaldata&#39; not found
-</code></pre>
-
-<p>Convert date info in format &#39;mm/dd/yyyy&#39; and remove corresponding string afterwards, recalculate age at randomisation to one digit, remove double columns, rearrange columns</p>
+<ul>
+<li>Convert date info in format &#39;mm/dd/yyyy&#39; &amp; remove corresponding string afterwards</li>
+<li>Recalculate age at randomisation to one digit</li>
+<li>Convert int to factors with the correct levels</li>
+<li>Rearrange columns</li>
+</ul>
 
 <pre><code class="r">strDates &lt;- clinicaldata$patient_date_of_birth
-</code></pre>
+clinicaldata$dob &lt;- as.Date(strDates, &quot;%d/%m/%Y&quot;)
+clinicaldata$patient_date_of_birth &lt;- NULL
 
-<pre><code>## Error: object &#39;clinicaldata&#39; not found
-</code></pre>
-
-<pre><code class="r">clinicaldata$dob &lt;- as.Date(strDates, &quot;%d/%m/%Y&quot;)
-</code></pre>
-
-<pre><code>## Error: object &#39;strDates&#39; not found
-</code></pre>
-
-<pre><code class="r">clinicaldata$patient_date_of_birth &lt;- NULL
-</code></pre>
-
-<pre><code>## Error: object &#39;clinicaldata&#39; not found
-</code></pre>
-
-<pre><code class="r">
 strDates_dor &lt;- clinicaldata$date_of_randomisation
-</code></pre>
+clinicaldata$dor &lt;- as.Date(strDates_dor, &quot;%d/%m/%Y&quot;)
+clinicaldata$date_of_randomisation &lt;- NULL
 
-<pre><code>## Error: object &#39;clinicaldata&#39; not found
-</code></pre>
-
-<pre><code class="r">clinicaldata$dor &lt;- as.Date(strDates_dor, &quot;%d/%m/%Y&quot;)
-</code></pre>
-
-<pre><code>## Error: object &#39;strDates_dor&#39; not found
-</code></pre>
-
-<pre><code class="r">clinicaldata$date_of_randomisation &lt;- NULL
-</code></pre>
-
-<pre><code>## Error: object &#39;clinicaldata&#39; not found
-</code></pre>
-
-<pre><code class="r">
 clinicaldata$age_ar &lt;- round(((difftime(clinicaldata$dor, clinicaldata$dob, 
     units = &quot;weeks&quot;))/52), digits = 1)
-</code></pre>
+clinicaldata$age_at_randomisation &lt;- NULL
 
-<pre><code>## Error: object &#39;clinicaldata&#39; not found
-</code></pre>
-
-<pre><code class="r">clinicaldata$age_at_randomisation &lt;- NULL
-</code></pre>
-
-<pre><code>## Error: object &#39;clinicaldata&#39; not found
-</code></pre>
-
-<pre><code class="r">
 clinicaldata$ID &lt;- paste(clinicaldata$trial, clinicaldata$clinical_trial_id)
-</code></pre>
+clinicaldata$trial &lt;- NULL
+clinicaldata$clinical_trial_id &lt;- NULL
 
-<pre><code>## Error: object &#39;clinicaldata&#39; not found
-</code></pre>
-
-<pre><code class="r">clinicaldata$trial &lt;- NULL
-</code></pre>
-
-<pre><code>## Error: object &#39;clinicaldata&#39; not found
-</code></pre>
-
-<pre><code class="r">clinicaldata$clinical_trial_id &lt;- NULL
-</code></pre>
-
-<pre><code>## Error: object &#39;clinicaldata&#39; not found
-</code></pre>
-
-<pre><code class="r">
 clinicaldata$gender &lt;- factor(clinicaldata$gender_id, labels = c(&quot;male&quot;, &quot;female&quot;))
+clinicaldata$gender_id &lt;- NULL
+
+clinicaldata$treatment &lt;- factor(clinicaldata$allocation_id, labels = c(&quot;FCR&quot;, 
+    &quot;FCMR&quot;, &quot;FCminiR/FCR&quot;))
+clinicaldata$allocation_id &lt;- NULL
+
+clinicaldata$vhmut &lt;- factor(clinicaldata$vh_id, labels = c(&quot;mutated&quot;, &quot;unmutated&quot;, 
+    &quot;biclonal&quot;, &quot;equivocal&quot;))
+clinicaldata$vh_id &lt;- NULL
+
+clinicaldata$vh3 &lt;- factor(clinicaldata$vh3.21, labels = c(&quot;mutated&quot;, &quot;unmutated&quot;))
+
+clinicaldata$mrd &lt;- factor(clinicaldata$mrd_id, labels = c(&quot;positive&quot;, &quot;negative&quot;, 
+    &quot;NA&quot;, &quot;NA&quot;, &quot;NA&quot;))
 </code></pre>
 
-<pre><code>## Error: object &#39;clinicaldata&#39; not found
+<pre><code>## Warning: duplicated levels in factors are deprecated
 </code></pre>
 
-<pre><code class="r">clinicaldata$gender_id &lt;- NULL
+<pre><code class="r">clinicaldata$mrd_id &lt;- NULL
+
+clinicaldata$response &lt;- factor(clinicaldata$final_response_id, labels = c(&quot;CR&quot;, 
+    &quot;CR_incomplete&quot;, &quot;PR&quot;, &quot;SD&quot;, &quot;PD&quot;, &quot;NA&quot;, &quot;NA&quot;, &quot;NA&quot;, &quot;CR_Cri&quot;))
 </code></pre>
 
-<pre><code>## Error: object &#39;clinicaldata&#39; not found
+<pre><code>## Warning: duplicated levels in factors are deprecated
 </code></pre>
 
-<pre><code class="r">
-a
-</code></pre>
+<pre><code class="r">clinicaldata$final_response_id &lt;- NULL
 
-<pre><code>## Error: object &#39;a&#39; not found
 </code></pre>
 
 <p>Rearrange collumns</p>
