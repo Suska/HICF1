@@ -1,0 +1,44 @@
+HICF1 CLinical data - descriptive overview
+============================================
+```{r}
+load("clinicaldata.Rda")
+library(gplots)
+library(ggplot2)
+```
+Is there an age difference between males and females?
+```{r}
+#using gplots package here
+boxplot2(age_ar ~ gender, data=clinicaldata, main="Gender ~ age", col=c("blue", "red"), xlab="gender", ylab="age", top=TRUE, varwidth="T")
+#same with ggplot2
+g <- ggplot(clinicaldata, aes(gender, age_ar))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+g + geom_boxplot(col=c("darkblue", "darkred")) + stat_summary(fun.data = give.n, geom = "text")
+# independent 2-group t-test with unequal variance (Welsh mod)
+t.test(age_ar~gender, data=clinicaldata) # where y is numeric and x is a binary factor
+```
+Is there an age difference between treatments?
+```{r}
+t <- ggplot(clinicaldata, aes(treatment, age_ar))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+t + geom_boxplot(col=c("purple", "darkgreen", "yellow"))+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("Treatment ~ age")+
+  ylab("Age (years)")
+# independent multi-group Welsh ANOVA
+oneway.test(age_ar ~ treatment, data=clinicaldata) # where y is numeric and x is a binary factor
+```
+Is there an age difference between MRD outcome and response?
+```{r}
+# independent multi-group Welsh ANOVA
+oneway.test(age_ar ~ treatment, data=clinicaldata) # where y is numeric and x is a binary factor
+```
+
+
+- possible confounding factors (age, gender,...)
+- treatment groups
+
+

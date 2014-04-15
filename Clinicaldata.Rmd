@@ -87,31 +87,7 @@ clinicaldata$response <- factor(clinicaldata$final_response_id, labels = c("CR",
 clinicaldata$final_response_id <- NULL
 
 clinicaldata <- clinicaldata[c("ID", "gender", "dob", "dor", "age_ar", "treatment", "mrd", "response", "vhmut", "vh3", "vh3.21", "vh_freq", "X13q14del", "X13q14_freq", "tri12", "tri12_freq", "X11q23del", "X11q23_freq", "X17pdel", "X17p_freq", "cd38")]	
-```
 
-Descriptive overview - check for confounding factors?
----------------------------
-
-Is there an age difference between males and females?
-```{r}
-#using gplots package here
+library(gplots)
 boxplot2(age_ar ~ gender, data=clinicaldata, main="Gender ~ age", col=c("blue", "red"), xlab="gender", ylab="age", top=TRUE, varwidth="T")
-# independent 2-group t-test with unequal variance (Welsh mod)
-t.test(age_ar~gender, data=clinicaldata) # where y is numeric and x is a binary factor
 ```
-Is there an age difference between treatments?
-```{r}
-boxplot2(age_ar ~ treatment, data=clinicaldata, main="Treatment ~ age", col=c("purple", "green", "yellow"), xlab="treatment", ylab="age", top=TRUE, varwidth="T")
-# independent multi-group Welsh ANOVA
-oneway.test(age_ar ~ treatment, data=clinicaldata) # where y is numeric and x is a binary factor
-```
-Is there an age difference between MRD outcome and response?
-```{r}
-boxplot2(age_ar ~ mrd, data=clinicaldata, main="MRD ~ age", col=c("red", "grey", "yellow"), xlab="MRD", ylab="age", top=TRUE, varwidth="T")
-# independent multi-group Welsh ANOVA
-oneway.test(age_ar ~ treatment, data=clinicaldata) # where y is numeric and x is a binary factor
-```
-
-
-- possible confounding factors (age, gender,...)
-- treatment groups
