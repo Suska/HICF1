@@ -88,6 +88,6 @@ clinicaldata$final_response_id <- NULL
 
 clinicaldata <- clinicaldata[c("ID", "gender", "dob", "dor", "age_ar", "treatment", "mrd", "response", "vhmut", "vh3", "vh3.21", "vh_freq", "X13q14del", "X13q14_freq", "tri12", "tri12_freq", "X11q23del", "X11q23_freq", "X17pdel", "X17p_freq", "cd38")]	
 
-library(gplots)
-boxplot2(age_ar ~ gender, data=clinicaldata, main="Gender ~ age", col=c("blue", "red"), xlab="gender", ylab="age", top=TRUE, varwidth="T")
+save(clinicaldata, file="clinicaldata.Rda")
+write.table(clinicaldata, file='clinicaldata_clean.tsv', quote=FALSE, sep='\t')
 ```

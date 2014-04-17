@@ -1,7 +1,7 @@
 HICF1 CLinical data - descriptive overview
 ============================================
 ```{r}
-load("clinicaldata.Rda")
+load("/home/suska/work/HICF1/HICF1_sub1/trunk/clinicaldata.Rda")
 library(gplots)
 library(ggplot2)
 ```
@@ -46,7 +46,7 @@ m + geom_boxplot(col=c("black", "purple"))+
 t.test(age_ar~mrd, data=clinicaldata)
 ```
 Is there an age difference between response?
-- Note here that there are only few datapoints for SD, PD and CR_CRi, and PD seem to be older
+- Note here that there are only few datapoints for SD, PD and CR_CRi seem to be older.
 - Unfortunately, those might be also very interesting cases...
 ```{r}
 clinicaldata_response <-na.omit(clinicaldata[,c("response","age_ar")])
@@ -61,5 +61,24 @@ r + geom_violin(fill = "grey80", colour = "#3366FF")+
 # pairwise Wilcoxon Test with plain Bonferroni
 pairwise.wilcox.test(clinicaldata$age, clinicaldata$response, p.adjust.method="bonferroni", paired = FALSE)
 ```
+Frequency analysis of chromosome lesions, mrd and response
+```{r}
+sum_vhmut_mrd <- table(clinicaldata$vhmut, clinicaldata$mrd)
+#colnames(sum_vhmut_mrd) <- c("vhmut", "mrd", "freq") 
+chi_vhmut_mrd <- chisq.test(sum_vhmut_mrd)
+```
+- again here, there are only few datapoints for "biclonal" and "equivocal" vhmut...
+-> are these the same as the SD, PD and CR_CRi in response?
 
-NExt: Put test and test result into table, build model with age as response??
+```{r}
+sub_vhmut_mrd <- subset(clinicaldata, response == "SD" | response == "PD"| response == "CR_CRi" )
+```
+
+Look up: Ordered factors in R, necessary?
+
+Use vcr package (see tutorial pdf)
+
+Test variables for independence 
+-> Categorical variables with CHiSq or XXX
+-> Continuous with correlations 
+

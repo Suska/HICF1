@@ -2,7 +2,7 @@ HICF1 CLinical data - descriptive overview
 ============================================
 
 ```r
-load("clinicaldata.Rda")
+load("/home/suska/work/HICF1/HICF1_sub1/trunk/clinicaldata.Rda")
 library(gplots)
 ```
 
@@ -122,7 +122,7 @@ t.test(age_ar ~ mrd, data = clinicaldata)
 ```
 
 Is there an age difference between response?
-- Note here that there are only few datapoints for SD, PD and CR_CRi, and PD seem to be older
+- Note here that there are only few datapoints for SD, PD and CR_CRi seem to be older.
 - Unfortunately, those might be also very interesting cases...
 
 ```r
@@ -163,5 +163,28 @@ pairwise.wilcox.test(clinicaldata$age, clinicaldata$response, p.adjust.method = 
 ## P value adjustment method: bonferroni
 ```
 
+Univariate analysis of chromosome lesions, mrd and response
+
+```r
+sum_vhmut_mrd <- table(clinicaldata$vhmut, clinicaldata$mrd)
+# colnames(sum_vhmut_mrd) <- c('vhmut', 'mrd', 'freq')
+chi_vhmut_mrd <- chisq.test(sum_vhmut_mrd)
+```
+
+```
+## Warning: Chi-squared approximation may be incorrect
+```
+
+- again here, there are only few datapoints for "biclonal" and "equivocal" vhmut...
+-> are these the same as the SD, PD and CR_CRi in response?
+
+
+```r
+sub_vhmut_mrd <- subset(clinicaldata, response == "SD" | response == "PD" | 
+    response == "CR_CRi")
+```
+
 
 NExt: Put test and test result into table, build model with age as response??
+CHi sq test for independence for categorical variables!
+

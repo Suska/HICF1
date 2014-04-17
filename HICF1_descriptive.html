@@ -181,7 +181,7 @@ hljs.initHighlightingOnLoad();
 <body>
 <h1>HICF1 CLinical data - descriptive overview</h1>
 
-<pre><code class="r">load(&quot;clinicaldata.Rda&quot;)
+<pre><code class="r">load(&quot;/home/suska/work/HICF1/HICF1_sub1/trunk/clinicaldata.Rda&quot;)
 library(gplots)
 </code></pre>
 
@@ -291,7 +291,7 @@ t.test(age_ar ~ mrd, data = clinicaldata)
 <p>Is there an age difference between response?</p>
 
 <ul>
-<li>Note here that there are only few datapoints for SD, PD and CR_CRi, and PD seem to be older</li>
+<li>Note here that there are only few datapoints for SD, PD and CR_CRi seem to be older.</li>
 <li>Unfortunately, those might be also very interesting cases&hellip;</li>
 </ul>
 
@@ -329,7 +329,27 @@ pairwise.wilcox.test(clinicaldata$age, clinicaldata$response, p.adjust.method = 
 ## P value adjustment method: bonferroni
 </code></pre>
 
-<p>NExt: Put test and test result into table, build model with age as response??</p>
+<p>Univariate analysis of chromosome lesions, mrd and response</p>
+
+<pre><code class="r">sum_vhmut_mrd &lt;- table(clinicaldata$vhmut, clinicaldata$mrd)
+# colnames(sum_vhmut_mrd) &lt;- c(&#39;vhmut&#39;, &#39;mrd&#39;, &#39;freq&#39;)
+chi_vhmut_mrd &lt;- chisq.test(sum_vhmut_mrd)
+</code></pre>
+
+<pre><code>## Warning: Chi-squared approximation may be incorrect
+</code></pre>
+
+<ul>
+<li>again here, there are only few datapoints for &ldquo;biclonal&rdquo; and &ldquo;equivocal&rdquo; vhmut&hellip;
+-&gt; are these the same as the SD, PD and CR_CRi in response?</li>
+</ul>
+
+<pre><code class="r">sub_vhmut_mrd &lt;- subset(clinicaldata, response == &quot;SD&quot; | response == &quot;PD&quot; | 
+    response == &quot;CR_CRi&quot;)
+</code></pre>
+
+<p>NExt: Put test and test result into table, build model with age as response??
+CHi sq test for independence for categorical variables!</p>
 
 </body>
 
