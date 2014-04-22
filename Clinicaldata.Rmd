@@ -40,50 +40,52 @@ clinicaldata$allocation_id <- NULL
 clinicaldata$vhmut <- factor(clinicaldata$vh_id, labels = c("mutated", "unmutated", "biclonal", "equivocal"))
 clinicaldata$vh_id <- NULL
 
-clinicaldata$vh3 <- factor(clinicaldata$vh3.21, labels = c("mutated", "unmutated"))
+clinicaldata$vh3 <- factor(clinicaldata$vh3.21, labels = c("mutated", "unmutated"), ordered=TRUE)
 
 clinicaldata$vh_freq <- clinicaldata$vh_mutation_.
 clinicaldata$vh_mutation_. <- NULL
 
-clinicaldata$X13q14del <- factor(clinicaldata$X13q14_deleted, labels = c("X13_deleted", "X13_not_deleted"))
+clinicaldata$X13q14del <- factor(clinicaldata$X13q14_deleted, labels = c("X13_deleted", "X13_not_deleted"), ordered=TRUE)
 clinicaldata$X13q14_deleted <- NULL
 
 clinicaldata$X13q14_freq <- clinicaldata$X13q14_._deleted
 clinicaldata$X13q14_._deleted <-NULL
 
-clinicaldata$tri12 <- factor(clinicaldata$trisomy12, labels = c("tri12_present", "tri12_absent"))
+clinicaldata$tri12 <- factor(clinicaldata$trisomy12, labels = c("tri12_present", "tri12_absent"), ordered=TRUE)
 clinicaldata$trisomy12 <- NULL
 
 clinicaldata$tri12_freq <- clinicaldata$trisomy_._abnormal
 clinicaldata$trisomy_._abnormal <- NULL
 
-clinicaldata$X11q23del <- factor(clinicaldata$X11q23_deleted, labels = c("X11_deleted", "X11_not_deleted"))
+clinicaldata$X11q23del <- factor(clinicaldata$X11q23_deleted, labels = c("X11_deleted", "X11_not_deleted"), ordered=TRUE)
 clinicaldata$X11q23_deleted <- NULL
 
 clinicaldata$X11q23_freq <- clinicaldata$X11q23_._deleted
 clinicaldata$X11q23_._deleted <- NULL
 
-clinicaldata$X17pdel <- factor(clinicaldata$X17p_deleted, labels = c("X17_deleted", "X17_not_deleted"))
+clinicaldata$X17pdel <- factor(clinicaldata$X17p_deleted, labels = c("X17_deleted", "X17_not_deleted"), ordered=TRUE)
 clinicaldata$X17p_deleted <- NULL
 
 clinicaldata$X17p_freq <- clinicaldata$X17p_._deleted
 clinicaldata$X17p_._deleted <- NULL
 
-clinicaldata$cd38 <- factor(clinicaldata$cd38..., labels = c("positive", "negative"))
+clinicaldata$cd38 <- factor(clinicaldata$cd38..., labels = c("positive", "negative"), ordered=TRUE)
 clinicaldata$cd38... <-NULL
 
-clinicaldata$mrd_id[clinicaldata$mrd_id == 3] <-NA
+clinicaldata$mrd_id[clinicaldata$mrd_id == 3] <- NA
 clinicaldata$mrd_id[clinicaldata$mrd_id == 4] <- NA
-clinicaldata$mrd_id[clinicaldata$mrd_id == 5] <- NA
+#clinicaldata$mrd_id[clinicaldata$mrd_id == 5] <- NA
 clinicaldata$mrd_id[clinicaldata$mrd_id == 6] <- NA
-clinicaldata$mrd <- factor(clinicaldata$mrd_id, labels = c("positive", "negative"))
+clinicaldata$mrd <- factor(clinicaldata$mrd_id, labels = c("positive", "negative", "death"), ordered=TRUE)
 clinicaldata$mrd_id <- NULL
 
-clinicaldata$final_response_id[clinicaldata$final_response_id == 6] <- NA
+#clinicaldata$final_response_id[clinicaldata$final_response_id == 6] <- NA
 clinicaldata$final_response_id[clinicaldata$final_response_id == 7] <- NA
 clinicaldata$final_response_id[clinicaldata$final_response_id == 8] <- NA
 clinicaldata$final_response_id[clinicaldata$final_response_id == 9] <- NA
-clinicaldata$response <- factor(clinicaldata$final_response_id, labels = c("CR", "CR_incomplete", "PR", "SD", "PD", "CR_Cri"))
+clinicaldata$response <- factor(clinicaldata$final_response_id, labels = c("CR", "CR_incomplete", "PR", "SD", "PD", "death", "CR_Cri"))
+clinicaldata$response <- ordered 
+
 clinicaldata$final_response_id <- NULL
 
 clinicaldata <- clinicaldata[c("ID", "gender", "dob", "dor", "age_ar", "treatment", "mrd", "response", "vhmut", "vh3", "vh3.21", "vh_freq", "X13q14del", "X13q14_freq", "tri12", "tri12_freq", "X11q23del", "X11q23_freq", "X17pdel", "X17p_freq", "cd38")]	
