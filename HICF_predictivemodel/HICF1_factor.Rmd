@@ -4,13 +4,227 @@ HICF1 - factor modelling
 Dr. Susanne Weller 
 01/05/2014
 
+Import clinical data, clean up clinical data and genetic factor data and merge both tables
+
 ```{r}
-read.table("HICF1_genetic_factors.csv", sep=",", header=TRUE)
+setwd("~/work/HICF1/HICF1_sub1/trunk/HICF_predictivemodel")
+
+#Import factor data
+genf <- as.data.frame(read.table("HICF1_genfactors.csv", sep="\t", header=TRUE, quote=""))
+colnames(genf)[1] <- "ID"
+
+#import clinical data
+clindat <- as.data.frame(read.table("clinicaldata_02052014.csv", sep="\t", header=TRUE, quote=""))
+clindat[clindat==""]<-NA
+colnames(clindat)[1] <- "ID"
+
+#clean up clinical data
+colnames(clindat)[3] <- "MRD"
+
+
+#import subclone data
+clones <- as.data.frame(read.table("HICF1_clones.csv", sep="\t", header=TRUE, quote="",na.strings=c("", "NA")))
+
+clones[clones==""]<- NA
+colnames(clones)[1] <- "ID"
+
+genclin <- merge(clindat, genf, by="ID")
+genclin <- merge(genclin, clones, by="ID")
 ```
 
-You can also embed plots, for example:
 
-```{r fig.width=7, fig.height=6}
-plot(cars)
+Total number of CNAs and MRD
+
+```{r}
+clones$TP53del <- factor(clones$TP53del, labels = c("TP53_not_del", "TP53_del"))
+clones$TP53mut <- factor(clones$TP53mut, labels = c("TP53_not_mut", "TP53_mut"))
+
+
+clones <-na.omit(clones[,c("MRD","Total.number.of.CNAs")])
+m <- ggplot(clones, aes(clones$MRD, clones$Total.number.of.CNAs))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+m + geom_boxplot(col=c("black", "purple"))+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("MRD ~ CNAs")+
+  xlab("MRD")+
+  ylab("Total number of CNAs")
+
+#Violine plot so show outliers better:
+
+r <- ggplot(clones, aes(clones$MRD, clones$Total.number.of.CNAs))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+r + geom_violin(fill = "grey80", colour = "darkblue")+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("MRD ~ CNAs")+
+  xlab("MRD")+
+  ylab("Total number of CNAs")
+pairwise.wilcox.test(clones$Total.number.of.CNAs, clones$MRD, p.adjust.method="bonferroni", paired = FALSE)
 ```
+
+Subclones and MRD
+```{r}
+
+clones <-na.omit(clones[,c("MRD","Subclones")])
+m <- ggplot(clones, aes(clones$MRD, clones$Subclones))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+m + geom_boxplot(col=c("black", "purple"))+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("MRD ~ CNAs")+
+  xlab("MRD")+
+  ylab("Total number of CNAs")
+
+# Violine plot
+r <- ggplot(clones, aes(clones$MRD, clones$Subclones))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+r + geom_violin(fill = "grey80", colour = "#3366FF")+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("Number of subclones influences MRD outcome")+
+  xlab("MRD")+
+  ylab("Subclones")
+pairwise.wilcox.test(clones$Subclones, clones$MRD, p.adjust.method="bonferroni", paired = FALSE)
+
+```
+
+Frequency analysis - TP53 and MRD
+```{r}
+clones$TP53del <- factor(clones$TP53del, labels = c("TP53_not_del", "TP53_del"))
+clones$TP53mut <- factor(clones$TP53mut, labels = c("TP53_not_mut", "TP53_mut"))
+
+sumclones_del <-as.data.frame(table(clones$TP53del,clones$MRD))
+sumclones_mut <-as.data.frame(table(clones$TP53mut, clones$MRD))
+
+mut_M <- as.table(rbind(c(110, 0), c(92, 15)))
+dimnames(mut_M) <- list(MRD = c("MRD_negativ","MRD_positive"),
+                    TP53_status = c("TP53_not_mut","TP53_mut"))
+(Xsq <- chisq.test(mut_M))  # Prints test summary
+Xsq$observed   # observed counts (same as M)
+Xsq$expected   # expected counts under the null
+Xsq$residuals  # Pearson residuals
+Xsq$stdres     # standardized residuals
+
+mosaicplot(mut_M)
+library(vcd)
+mosaic(mut_M, shade=TRUE, legend=FALSE, sub="Chi-Square test, p<0.0001***")
+```
+
+TP53 deletion and subclones
+
+```{r}
+### get p value
+pvaldel <- wilcox.test(Subclones ~TP53del, data = clones)$p.value
+### strip to 3 significant digits
+pvaldel <- signif(pvaldel, 3)
+### add asterisk if <0.05
+pvaldel <- ifelse(pvaldel<0.06, paste0(pvaldel, " trend"), pvaldel)
+pvaldel <- paste0("Wilcoxon Test \n p=", pvaldel)
+
+r <- ggplot(clones, aes(clones$TP53del, clones$Subclones))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+r + geom_violin(fill = "grey80", colour = "#3366FF")+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("TP53del and number of subclones")+
+  xlab("TP53 deletion")+
+  ylab("Subclones")
+
+m <- ggplot(clones, aes(clones$TP53del, clones$Subclones))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+m + geom_boxplot(col=c("black", "purple"))+
+  stat_summary(fun.data = give.n, geom = "text")+
+ ggtitle("TP53del and number of subclones")+
+  xlab("TP53 deletion")+
+  ylab("Subclones")+
+  annotate("text",
+             x=0.8,
+             y=4,
+             label=pvaldel)
+pairwise.wilcox.test(clones$Subclones, clones$TP53del, p.adjust.method="bonferroni", paired = FALSE)
+```
+TP53 mutation and subclones
+```{r}
+r <- ggplot(clones, aes(clones$TP53mut, clones$Subclones))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+r + geom_violin(fill = "grey80", colour = "#3366FF")+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("TP53 mutation and number of subclones")+
+  xlab("TP53 mutation")+
+  ylab("Subclones")+
+ 
+
+
+### get p value
+pvalmut <- wilcox.test(Subclones ~TP53mut, data = clones)$p.value
+### strip to 3 significant digits
+pvalmut <- signif(pvalmut, 3)
+### add asterisk if <0.05
+pvalmut <- ifelse(pvalmut<0.05, paste0(pvalmut, " *"), pvalmut)
+pvalmut <- paste0("Wilcoxon Test \n p=", pvalmut)
+
+### plot as per OP
+m <- ggplot(clones, aes(clones$TP53mut, clones$Subclones))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+m + geom_boxplot(col=c("black", "purple"))+
+  stat_summary(fun.data = give.n, geom = "text")+
+ ggtitle("TP53 mutation and number of subclones")+
+  xlab("TP53 mutation")+
+  ylab("Subclones")+
+    annotate("text",
+             x=0.8,
+             y=4,
+             label=pvalmut)
+
+
+```
+Frequencies of "Total number of CNAs" who are "MRD" positive or negative
+
+```{r}
+
+
+CNAfreq <-as.data.frame(table(clones$MRD,clones$Total.number.of.CNAs))
+colnames(CNAfreq) <- c("MRD", "Total.number.of.CNAs", "Frequency")
+
+# Stacked bar chart using ggplot
+ggplot(data=CNAfreq, aes(x=factor(CNAfreq$Total.numer.of.CNAs), y=CNAfreq$Frequency, fill=factor(CNAfreq$MRD)) + geom_bar(stat="identity")
+
+ggplot(diamonds, aes(CNAfreq, fill=CNAfreq$MRD)) + geom_bar(position="dodge")
+       
+ggplot(CNAfreq,aes(x=factor(Year),y=MWh,fill=factor(Metric))) + geom_bar(position="stack")
+
+clones <-na.omit(clones[,c("MRD","Subclones", "Total.number.of.CNAs")])
+k <- ggplot(clones, aes(factor(clones$Total.number.of.CNAs), fill=clones$MRD))
+k + geom_bar()+
+ggtitle("Number of CNAs within CLL sample set")+
+  xlab("Total number of CNAs")+
+  ylab("Number of samples")
+
+
+
+# Building the table and doing CHi-square test
+mut_M <- as.table(rbind(c(110, 0), c(92, 15)))
+dimnames(mut_M) <- list(MRD = c("MRD_negativ","MRD_positive"),
+                    TP53_status = c("TP53_not_mut","TP53_mut"))
+(Xsq <- chisq.test(mut_M))  # Prints test summary
+Xsq$observed   # observed counts (same as M)
+Xsq$expected   # expected counts under the null
+Xsq$residuals  # Pearson residuals
+Xsq$stdres     # standardized residuals
+
+mosaicplot(mut_M)
+library(vcd)
+mosaic(mut_M, shade=TRUE, legend=FALSE, sub="Chi-Square test, p<0.0001***")
 
