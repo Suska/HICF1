@@ -1,0 +1,263 @@
+HICF1 - factor modelling - UNIVARIATES
+========================================================
+
+Dr. Susanne Weller 
+14/05/2014
+
+Import merged dataframe
+
+```{r}
+setwd("~/work/HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_univariates")
+load("genclin.Rda")
+
+#convert integers to factors
+
+genclin[,5] <- as.factor(genclin[,5])
+genclin[,12:45] <- lapply(genclin[,12:45], as.factor)
+```
+
+
+Univariate analysis of variable effect on MRD
+
+
+```{r}
+#Chi-square test for factor variables
+
+clones$Total.number.of.CNAs <- as.factor(clones$Total.number.of.CNAs)
+Chi_CNAfreq <- table(clones$MRD, clones$Total.number.of.CNAs > 4)
+
+cutoff <- as.list(c(4, 5, 6, 7, 8, 12))
+output_CNAs <- vector("numeric", 61) 
+for (i in 1:61){
+Chi_CNAfreq <-table(clones$MRD, clones$Total.number.of.CNAs > i)
+print(Chi_CNAfreq)
+Xsq <- chisq.test(Chi_CNAfreq)
+output_CNAs[i] <- Xsq[3]
+}
+
+#Wilcoxon test for continuous variables
+
+
+# graph to show p-values for chi-square test against Total number of CNAs:
+output_CNAs <- unlist(output_CNAs)
+Total.number.of.CNAs <- c(1:61)
+pvalues <- as.data.frame(cbind(output_CNAs, Total.number.of.CNAs))
+pvalues <- subset(pvalues, Total.number.of.CNAs < 27)
+```{r}
+clones$TP53del <- factor(clones$TP53del, labels = c("TP53_not_del", "TP53_del"))
+clones$TP53mut <- factor(clones$TP53mut, labels = c("TP53_not_mut", "TP53_mut"))
+
+```
+
+
+clones <-na.omit(clones[,c("MRD","Total.number.of.CNAs")])
+m <- ggplot(clones, aes(clones$MRD, clones$Total.number.of.CNAs))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+m + geom_boxplot(col=c("black", "purple"))+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("MRD ~ CNAs")+
+  xlab("MRD")+
+  ylab("Total number of CNAs")
+
+#Violine plot so show outliers better:
+
+r <- ggplot(clones, aes(clones$MRD, clones$Total.number.of.CNAs))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+r + geom_violin(fill = "grey80", colour = "darkblue")+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("MRD ~ CNAs")+
+  xlab("MRD")+
+  ylab("Total number of CNAs")
+pairwise.wilcox.test(clones$Total.number.of.CNAs, clones$MRD, p.adjust.method="bonferroni", paired = FALSE)
+```
+
+Subclones and MRD
+```{r}
+
+clones <-na.omit(clones[,c("MRD","Subclones")])
+m <- ggplot(clones, aes(clones$MRD, clones$Subclones))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+m + geom_boxplot(col=c("black", "purple"))+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("MRD ~ CNAs")+
+  xlab("MRD")+
+  ylab("Total number of CNAs")
+
+# Violine plot
+r <- ggplot(clones, aes(clones$MRD, clones$Subclones))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+r + geom_violin(fill = "grey80", colour = "#3366FF")+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("Number of subclones influences MRD outcome")+
+  xlab("MRD")+
+  ylab("Subclones")
+pairwise.wilcox.test(clones$Subclones, clones$MRD, p.adjust.method="bonferroni", paired = FALSE)
+
+```
+
+Frequency analysis - TP53 and MRD
+```{r}
+clones$TP53del <- factor(clones$TP53del, labels = c("TP53_not_del", "TP53_del"))
+clones$TP53mut <- factor(clones$TP53mut, labels = c("TP53_not_mut", "TP53_mut"))
+
+sumclones_del <-as.data.frame(table(clones$TP53del,clones$MRD))
+sumclones_mut <-as.data.frame(table(clones$TP53mut, clones$MRD))
+
+mut_M <- as.table(rbind(c(110, 0), c(92, 15)))
+dimnames(mut_M) <- list(MRD = c("MRD_negativ","MRD_positive"),
+                    TP53_status = c("TP53_not_mut","TP53_mut"))
+(Xsq <- chisq.test(mut_M))  # Prints test summary
+Xsq$observed   # observed counts (same as M)
+Xsq$expected   # expected counts under the null
+Xsq$residuals  # Pearson residuals
+Xsq$stdres     # standardized residuals
+
+mosaicplot(mut_M)
+library(vcd)
+mosaic(mut_M, shade=TRUE, legend=FALSE, sub="Chi-Square test, p<0.0001***")
+```
+
+TP53 deletion and subclones
+
+```{r}
+### get p value
+pvaldel <- wilcox.test(Subclones ~TP53del, data = clones)$p.value
+### strip to 3 significant digits
+pvaldel <- signif(pvaldel, 3)
+### add asterisk if <0.05
+pvaldel <- ifelse(pvaldel<0.06, paste0(pvaldel, " trend"), pvaldel)
+pvaldel <- paste0("Wilcoxon Test \n p=", pvaldel)
+
+r <- ggplot(clones, aes(clones$TP53del, clones$Subclones))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+r + geom_violin(fill = "grey80", colour = "#3366FF")+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("TP53del and number of subclones")+
+  xlab("TP53 deletion")+
+  ylab("Subclones")
+
+m <- ggplot(clones, aes(clones$TP53del, clones$Subclones))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+m + geom_boxplot(col=c("black", "purple"))+
+  stat_summary(fun.data = give.n, geom = "text")+
+ ggtitle("TP53del and number of subclones")+
+  xlab("TP53 deletion")+
+  ylab("Subclones")+
+  annotate("text",
+             x=0.8,
+             y=4,
+             label=pvaldel)
+pairwise.wilcox.test(clones$Subclones, clones$TP53del, p.adjust.method="bonferroni", paired = FALSE)
+```
+TP53 mutation and subclones
+```{r}
+r <- ggplot(clones, aes(clones$TP53mut, clones$Subclones))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+r + geom_violin(fill = "grey80", colour = "#3366FF")+
+  stat_summary(fun.data = give.n, geom = "text")+
+  ggtitle("TP53 mutation and number of subclones")+
+  xlab("TP53 mutation")+
+  ylab("Subclones")+
+
+### get p value
+pvalmut <- wilcox.test(Subclones ~TP53mut, data = clones)$p.value
+### strip to 3 significant digits
+pvalmut <- signif(pvalmut, 3)
+### add asterisk if <0.05
+pvalmut <- ifelse(pvalmut<0.05, paste0(pvalmut, " *"), pvalmut)
+pvalmut <- paste0("Wilcoxon Test \n p=", pvalmut)
+
+### plot as per OP
+m <- ggplot(clones, aes(clones$TP53mut, clones$Subclones))
+give.n <- function(x){
+   return(c(y = mean(x), label = length(x)))
+}
+m + geom_boxplot(col=c("black", "purple"))+
+  stat_summary(fun.data = give.n, geom = "text")+
+ ggtitle("TP53 mutation and number of subclones")+
+  xlab("TP53 mutation")+
+  ylab("Subclones")+
+    annotate("text",
+             x=0.8,
+             y=4,
+             label=pvalmut)
+
+
+```
+Frequencies of "Total number of CNAs" who are "MRD" positive or negative
+
+```{r}
+
+CNAfreq <-as.data.frame(table(clones$MRD,clones$Total.number.of.CNAs))
+colnames(CNAfreq) <- c("MRD", "Total.number.of.CNAs", "Frequency")
+
+# Stacked bar chart using ggplot
+clones <-na.omit(clones[,c("MRD","Subclones", "Total.number.of.CNAs")])
+k <- ggplot(clones, aes(factor(clones$Total.number.of.CNAs), fill=clones$MRD))
+k + geom_bar()+
+ggtitle("Number of CNAs within CLL sample set")+
+  xlab("Total number of CNAs")+
+  ylab("Number of samples")
+
+#dodged bar chart
+n <- ggplot(clones, aes(factor(clones$Total.number.of.CNAs),fill=clones$MRD))
+n+geom_bar(position="dodge")+
+ ggtitle("Number of CNAs within CLL sample set")+
+  xlab("Total number of CNAs")+
+  ylab("Number of samples")+
+  scale_fill_manual(values=c("darkblue", "darkred"))
+
+# Chi - square test with different cut-offs for what CNAs are considered as "normal"
+
+clones$Total.number.of.CNAs <- as.factor(clones$Total.number.of.CNAs)
+Chi_CNAfreq <- table(clones$MRD, clones$Total.number.of.CNAs > 4)
+
+cutoff <- as.list(c(4, 5, 6, 7, 8, 12))
+output_CNAs <- vector("numeric", 61) 
+for (i in 1:61){
+Chi_CNAfreq <-table(clones$MRD, clones$Total.number.of.CNAs > i)
+print(Chi_CNAfreq)
+Xsq <- chisq.test(Chi_CNAfreq)
+output_CNAs[i] <- Xsq[3]
+}
+
+# graph to show p-values for chi-square test against Total number of CNAs:
+output_CNAs <- unlist(output_CNAs)
+Total.number.of.CNAs <- c(1:61)
+pvalues <- as.data.frame(cbind(output_CNAs, Total.number.of.CNAs))
+pvalues <- subset(pvalues, Total.number.of.CNAs < 27)
+
+p <- ggplot(pvalues, aes(x=pvalues$Total.number.of.CNAs, y=pvalues$output_CNAs))
+p+geom_point(shape=1)+
+  scale_y_reverse()+
+  geom_hline(yintercept = 0.05)+
+  scale_x_continuous(breaks=seq(1, 45, 1))+
+  ggtitle("Significance of CNAs cutoffs")+
+  xlab("Total number of CNAs - cutoff")+
+  ylab("p-value for Chi-square test") 
+
+
+# Mosaic plot for Cutoff at 6
+
+Chi_CNAfreq_6 <- table(clones$MRD, clones$Total.number.of.CNAs > 6)
+dimnames(Chi_CNAfreq_6) <- list(MRD = c("MRD_negativ","MRD_positive"),
+                    Total_number_of_CNAs = c(">/= 6","< 6"))
+
+mosaicplot(Chi_CNAfreq_6, shade=TRUE, legend=FALSE, sub="Chi-Square test, p=0.047")
+library(vcd)
+mosaic(Chi_CNAfreq_6, shade=TRUE, legend=FALSE, sub="Chi-Square test, p=0.047")
+
