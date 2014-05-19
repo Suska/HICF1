@@ -1,0 +1,218 @@
+HICF1 - factor modelling - TREES
+========================================================
+
+Dr. Susanne Weller 
+16/05/2014
+
+Import merged dataframe
+
+```{r}
+setwd("~/work/HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees")
+load("genclin.Rda")
+
+#reorder collumns for convenience
+genclin<-genclin[c(1, 7, 2:6, 8:45)]
+genclin<-genclin[c(1, 2, 8, 5, 3, 7, 10, 11, 9, 4, 6, 12:45)]
+
+
+#convert integers to factors
+genclin[,9:45] <- lapply(genclin[,9:45], as.factor)
+levels(genclin$MRD) <- c("+MRD", "-MRD")
+
+```
+
+I. SIMPLE CLASSIFICATION TREES
+-------------------------------
+
+Only genetic data:
+
+```{r}
+library(tree)
+treegenetic <- genclin[c(2,6,8:45)]
+tree.genetic <- tree(MRD~., treegenetic)
+summary(tree.genetic)
+
+plot(tree.genetic)
+text(tree.genetic, pretty = 0)
+
+```
+
+Using all available data
+```{r}
+treeall <- genclin[c(2,4:45)]
+tree.all <- tree(MRD~., treeall)
+summary(tree.all)
+
+plot(tree.all)
+text(tree.all, pretty = 0)
+```
+
+II. SIMPLE CROSS VALIDATION
+---------------------------
+
+```{r}
+
+set.seed(5)
+train1 <- sample(1:nrow(genclin), 139)
+tree.test1 <- genclin[-train1,]
+tree.train1 <- genclin[train1,]
+MRD.test=treeall$MRD[-train1]
+
+tree.train <- tree(MRD~., treeall, subset=train1)
+summary(tree.train)
+tree.pred=predict(tree.train, tree.test1, type="class")
+table(tree.pred, MRD.test)
+```
+
+III. COST COMPLEXITY PRUNING
+----------------------------
+
+Using only the training data set
+
+```{r}
+
+set.seed(3)
+cv.treetrain <- cv.tree(tree.train, FUN=prune.misclass)
+cv.treetrain
+
+par(mfrow=c(1,2))
+plot(cv.treetrain$size, cv.treetrain$dev, type="b")
+plot(cv.treetrain$k, cv.treetrain$dev, type="b")
+
+prune.train1 <- prune.misclass(tree.train, best=4)
+plot(prune.train1)
+text(prune.train1, pretty=0)
+summary(prune.train1)
+```
+Note: This pruning resultet in an improvement of 0.006, possibly due to the fact that the original tree suffered from high variance
+
+
+Using the whole data set
+
+```{r}
+set.seed(5)
+cv.tree.all <- cv.tree(tree.all, FUN=prune.misclass)
+cv.tree.all
+
+par(mfrow=c(1,2))
+plot(cv.tree.all$size, cv.tree.all$dev, type="b")
+plot(cv.tree.all$k, cv.tree.all$dev, type="b")
+
+prune.tree.all <- prune.misclass(tree.all, best=4)
+plot(prune.tree.all)
+text(prune.tree.all, pretty=0)
+summary(prune.tree.all)
+```
+
+without freqvhmut
+```{r}
+wofreq <- genclin[c(2,4,5,7:45)]
+tree.freq <- tree(MRD~., wofreq)
+summary(tree.freq)
+
+plot(tree.freq)
+text(tree.freq, pretty = 0)
+
+set.seed(5)
+cv.tree.freq <- cv.tree(tree.freq, FUN=prune.misclass)
+cv.tree.freq
+
+par(mfrow=c(1,2))
+plot(cv.tree.freq$size, cv.tree.freq$dev, type="b")
+plot(cv.tree.freq$k, cv.tree.freq$dev, type="b")
+
+prune.tree.freq <- prune.misclass(tree.freq, best=8)
+par(mfrow=c(1,1))
+plot(prune.tree.freq)
+text(prune.tree.freq, pretty=0)
+mtext("0.2418%", side=3)
+summary(prune.tree.freq)
+```
+
+III. RANDOM FORESTS
+-------------------
+!!!This still needs cross validation!
+
+Note: Random forests does not take NAs, so n=182
+with all variables
+```{r} 
+library(randomForest)
+set.seed(1)
+rf.tree <- randomForest(MRD~., treeall, mtry=5, importance=TRUE, na.action = na.omit, ntree=1000)
+rf.tree
+importance(rf.tree)
+varImpPlot(rf.tree, sort=TRUE, type=1, scale=TRUE)
+
+```
+without freqvhmut
+```{r}
+set.seed(2)
+rf.tree.wofreq <- randomForest(MRD~., wofreq, mtry=5, importance=TRUE, na.action = na.omit, ntree=1000)
+rf.tree.wofreq
+importance(rf.tree.wofreq)
+varImpPlot(rf.tree.wofreq, sort=TRUE, type=1, scale=TRUE)
+```
+
+IV. BOOSTING
+------------
+
+!!! This still needs cross validation!
+in particular: Cross validation to select n.trees
+
+Interaction depth = 1 puts more emphasis on the first splits!
+
+```{r}
+library(gbm)
+set.seed(4)
+facttreeall <-treeall
+modelmatrix <-model.matrix( ~ MRD - 1, data=facttreeall)
+facttreeall$MRD <-modelmatrix[,1]
+boost.tree=gbm(MRD~., facttreeall, distribution="bernoulli", n.trees=2000, interaction.depth=1)
+par(mfrow=c(1,1))
+summary(boost.tree)
+
+
+par(mfrow=c(2, 3))
+plot(boost.tree, i="freqvhmut")
+plot(boost.tree, i="aar")
+plot(boost.tree, i="CNAs")
+plot(boost.tree, i="cd38")
+plot(boost.tree, i="treatment")
+plot(boost.tree, i="clones")
+```
+leaving out freqvhmut
+```{r}
+set.seed(4)
+facttreeall.wofreq <-wofreq
+facttreeall.wofreq$MRD <-modelmatrix[,1]
+boost.tree.wofreq =gbm(MRD~., facttreeall.wofreq, distribution="bernoulli", n.trees=2000, interaction.depth=1)
+par(mfrow=c(1,1))
+summary(boost.tree.wofreq)
+
+
+par(mfrow=c(2, 3))
+plot(boost.tree.wofreq, i="aar")
+plot(boost.tree.wofreq, i="vhmut")
+plot(boost.tree.wofreq, i="X11q_biallelic")
+plot(boost.tree.wofreq, i="trisomy12")
+plot(boost.tree.wofreq, i="treatment")
+plot(boost.tree.wofreq, i="independent_13q.")
+```
+leaving out freqvhmut and vhmut
+```{r}
+set.seed(4)
+facttreeall.wofreqvhmut <-facttreeall.wofreq[c(1:7,9:42)]
+
+boost.tree.wofreqvhmut =gbm(MRD~., facttreeall.wofreqvhmut, distribution="bernoulli", n.trees=2000, interaction.depth=1)
+par(mfrow=c(1,1))
+summary(boost.tree.wofreqvhmut)
+
+
+par(mfrow=c(2, 3))
+plot(boost.tree.wofreqvhmut, i="aar")
+plot(boost.tree.wofreqvhmut, i="trisomy12")
+plot(boost.tree.wofreqvhmut, i="X11q_biallelic")
+plot(boost.tree.wofreqvhmut, i="treatment")
+plot(boost.tree.wofreqvhmut, i="independent_13q.")
+plot(boost.tree.wofreqvhmut, i="clones")
+
