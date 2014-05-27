@@ -1,0 +1,347 @@
+HICF1 - factor modelling - TREES- continued 1
+========================================================
+
+Dr. Susanne Weller 
+20/05/2014
+
+Import merged dataframe
+
+```{r}
+setwd("/home/suska/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees")
+load("genclin.Rda")
+
+#reorder collumns for convenience
+genclin<-genclin[c(1, 7, 2:6, 8:45)]
+genclin<-genclin[c(1, 2, 8, 5, 3, 7, 10, 11, 9, 4, 6, 12:45)]
+
+
+#convert integers to factors
+genclin[,9:45] <- lapply(genclin[,9:45], as.factor)
+levels(genclin$MRD) <- c("+MRD", "-MRD")
+
+```
+
+IV. BOOSTING
+------------
+
+(1) Fit a tree with d=1 splits to the data
+(2) Update the residuals
+(3) Repeat (1)&(2) until desired number of end notes is reached
+
+```{r}
+treeall <- genclin[c(2,4:45)]
+tree.all <- tree(MRD~., treeall)
+```
+
+with all data
+```{r}
+library(gbm)
+facttreeall <-treeall
+modelmatrix <-model.matrix( ~ MRD - 1, data=facttreeall)
+facttreeall$MRD <-modelmatrix[,1]
+set.seed(4)
+boost.tree=gbm(MRD~., facttreeall, distribution="bernoulli", n.trees=2000, interaction.depth=1, shrinkage = 0.001)
+
+library(dismo)
+tune.boost.tree <- gbm.step(data=facttreeall,
+     gbm.x = 2:43,
+     gbm.y = 1,
+     family = "bernoulli",
+     tree.complexity = 1,
+     learning.rate = 0.001,
+     bag.fraction = 0.8,
+     n.fold=100)
+
+library(ggplot2)
+par(mfrow=c(1,1))
+sum.boost.tree <- summary(boost.tree)
+sum.boost.tree$var <- ordered(sum.boost.tree$var)
+sum.boost.tree$var <- reorder(sum.boost.tree$var, sum.boost.tree$rel.inf)
+sum.boost.tree <- subset(sum.boost.tree, sum.boost.tree$rel.inf > 1)
+plot.boost.tree <- ggplot(sum.boost.tree, aes(sum.boost.tree$var, sum.boost.tree$rel.inf))
+boostplot1 <-plot.boost.tree + geom_bar(stat="identity")+
+scale_y_continuous() + coord_flip()+
+  ggtitle("Boosting with all data")+
+  theme(axis.text.y  = element_text(vjust=0.5, size=16))+
+  annotate("text", x = 3, y = 30, label = "CV ROC = 0.722,\ncv = 100x,\n n.trees=2000,\n k=0.001,\n 3.27 min")+
+  ylim(0,45)
+  
+
+par(mfrow=c(2, 3))
+plot(boost.tree, i="freqvhmut")
+plot(boost.tree, i="aar")
+plot(boost.tree, i="X11q_biallelic")
+plot(boost.tree, i="trisomy12")
+plot(boost.tree, i="treatment")
+plot(boost.tree, i="NOTCH1_mutation")
+```
+without freqvhmut
+```{r}
+facttreeall.wofreq <-facttreeall[c(1:3, 5:43)]
+
+set.seed(4)
+tune.boost.tree.wofreq <- gbm.step(data=facttreeall.wofreq,
+     gbm.x = 2:42,
+     gbm.y = 1,
+     family = "bernoulli",
+     tree.complexity = 1,
+     learning.rate = 0.005,
+     bag.fraction = 0.8,
+     n.fold=100)
+ 
+
+boost.tree.wofreq =gbm(MRD~., facttreeall.wofreq, distribution="bernoulli", n.trees=4750, interaction.depth=1, shrinkage=0.001)
+
+par(mfrow=c(1,1))
+sum.boost.tree.wofreq <- summary(boost.tree.wofreq)
+sum.boost.tree.wofreq$var <- ordered(sum.boost.tree.wofreq$var)
+sum.boost.tree.wofreq$var <- reorder(sum.boost.tree.wofreq$var, sum.boost.tree.wofreq$rel.inf)
+sum.boost.tree.wofreq <- subset(sum.boost.tree.wofreq, sum.boost.tree.wofreq$rel.inf > 1)
+plot.boost.tree.wofreq <- ggplot(sum.boost.tree.wofreq, aes(sum.boost.tree.wofreq$var, sum.boost.tree.wofreq$rel.inf))
+boostplot2 <-plot.boost.tree.wofreq + geom_bar(stat="identity")+
+scale_y_continuous() + coord_flip()+
+  ggtitle("Boosting without freqvhmut")+
+  theme(axis.text.y  = element_text(vjust=0.5, size=16))+
+  annotate("text", x = 3, y = 30, label = "CV ROC = 0.69,\n cv = 100x,\n n.trees=4750,\n k=0.005,\n 4.17 min")+
+  ylim(0,45)
+par(mfrow=c(2, 3))
+plot(boost.tree.wofreq, i="aar")
+plot(boost.tree.wofreq, i="vhmut")
+plot(boost.tree.wofreq, i="X11q_biallelic")
+plot(boost.tree.wofreq, i="trisomy12")
+plot(boost.tree.wofreq, i="treatment")
+plot(boost.tree.wofreq, i="independent_13q.")
+```
+without freqvhmut, vhmut
+```{r}
+
+facttreeall.wofreq.wovhmut <-facttreeall.wofreq[c(1:7,9:42)]
+
+set.seed(4)
+tune.boost.tree.wofreq.wovhmut <- gbm.step(data=facttreeall.wofreq,
+     gbm.x = 2:42,
+     gbm.y = 1,
+     family = "bernoulli",
+     tree.complexity = 1,
+     learning.rate = 0.004,
+     bag.fraction = 0.8,
+     n.fold=100)
+
+boost.tree.wofreq.wovhmut =gbm(MRD~., facttreeall.wofreq.wovhmut, distribution="bernoulli", n.trees=2000, interaction.depth=1)
+
+par(mfrow=c(1,1))
+sum.boost.tree.wofreq.wovhmut <- summary(boost.tree.wofreq.wovhmut)
+sum.boost.tree.wofreq.wovhmut$var <- ordered(sum.boost.tree.wofreq.wovhmut$var)
+sum.boost.tree.wofreq.wovhmut$var <- reorder(sum.boost.tree.wofreq.wovhmut$var, sum.boost.tree.wofreq.wovhmut$rel.inf)
+sum.boost.tree.wofreq.wovhmut <- subset(sum.boost.tree.wofreq.wovhmut, sum.boost.tree.wofreq.wovhmut$rel.inf > 1)
+plot.boost.tree.wofreq.wovhmut <- ggplot(sum.boost.tree.wofreq.wovhmut, aes(sum.boost.tree.wofreq.wovhmut$var, sum.boost.tree.wofreq.wovhmut$rel.inf))
+
+boostplot3<-plot.boost.tree.wofreq.wovhmut + geom_bar(stat="identity")+
+scale_y_continuous() + coord_flip()+
+  ggtitle("Boosting without freqvhmut and vhmut")+
+  theme(axis.text.y  = element_text(vjust=0.5, size=16))+
+  annotate("text", x = 3, y = 30, label = "CV ROC = 0.742,\n cv = 100x,\n n.trees=5050,\n k=0.004,\n 4.26 min")+
+  ylim(0,45)
+
+
+par(mfrow=c(2, 3))
+plot(boost.tree.wofreq.wovhmut, i="aar")
+plot(boost.tree.wofreq.wovhmut, i="X11q_biallelic")
+plot(boost.tree.wofreq.wovhmut, i="trisomy12")
+plot(boost.tree.wofreq.wovhmut, i="treatment")
+plot(boost.tree.wofreq.wovhmut, i="independent_13q.")
+plot(boost.tree.wofreq.wovhmut, i="clones")
+
+```
+without freqmut, vhmut, aar
+```{r}
+
+facttreeall.wofreq.wovhmut.woaar <-facttreeall[c(1,2,5:8,10:43)]
+
+set.seed(4)
+tune.boost.tree.wofreq.wovhmut.woaar <- gbm.step(data=facttreeall.wofreq.wovhmut.woaar,
+     gbm.x = 2:40,
+     gbm.y = 1,
+     family = "bernoulli",
+     tree.complexity = 1,
+     learning.rate = 0.001,
+     bag.fraction = 0.8,
+     n.fold=100)
+boost.tree.wofreq.wovhmut.woaar =gbm(MRD~., facttreeall.wofreq.wovhmut.woaar, distribution="bernoulli", n.trees=2000, interaction.depth=1)
+
+par(mfrow=c(1,1))
+sum.boost.tree.wofreq.wovhmut.woaar <- summary(boost.tree.wofreq.wovhmut.woaar)
+sum.boost.tree.wofreq.wovhmut.woaar$var <- ordered(sum.boost.tree.wofreq.wovhmut.woaar$var)
+sum.boost.tree.wofreq.wovhmut.woaar$var <- reorder(sum.boost.tree.wofreq.wovhmut.woaar$var, sum.boost.tree.wofreq.wovhmut.woaar$rel.inf)
+sum.boost.tree.wofreq.wovhmut.woaar <- subset(sum.boost.tree.wofreq.wovhmut.woaar, sum.boost.tree.wofreq.wovhmut.woaar$rel.inf > 1)
+plot.boost.tree.wofreq.wovhmut.woaar <- ggplot(sum.boost.tree.wofreq.wovhmut.woaar, aes(sum.boost.tree.wofreq.wovhmut.woaar$var, sum.boost.tree.wofreq.wovhmut.woaar$rel.inf))
+boostplot4<-plot.boost.tree.wofreq.wovhmut.woaar + geom_bar(stat="identity")+
+scale_y_continuous() + coord_flip()+
+  ggtitle("Boosting without freqvhmut, vhmut and aar")+
+  theme(axis.text.y  = element_text(vjust=0.5, size=16))+
+  annotate("text", x = 3, y = 30, label = "CV ROC = 0.635,\n cv = 100x,\n n.trees=4250,\n k=0.001,\n 3.42 min")+
+  ylim(0,45)
+
+par(mfrow=c(2, 3))
+plot(boost.tree.wofreq.wovhmut.woaar, i="X11q_biallelic")
+plot(boost.tree.wofreq.wovhmut.woaar, i="trisomy12")
+plot(boost.tree.wofreq.wovhmut.woaar, i="treatment")
+plot(boost.tree.wofreq.wovhmut.woaar, i="independent_13q.")
+plot(boost.tree.wofreq.wovhmut.woaar, i="X11q_monoallelic_mut")
+plot(boost.tree.wofreq.wovhmut.woaar, i="clones")
+
+```
+*as agreed on 20/05/2014*
+
+Without treatment and age, but with vhmut
+
+```{r}
+facttreeall.woaar <- facttreeall[c(1, 4:43)]
+
+set.seed(4)
+tune.boost.tree.woaar <- gbm.step(data=facttreeall.woaar,
+     gbm.x = 2:41,
+     gbm.y = 1,
+     family = "bernoulli",
+     tree.complexity = 1,
+     learning.rate = 0.001,
+     bag.fraction = 0.8,
+     n.fold=100)
+ 
+
+boost.tree.woaar =gbm(MRD~., facttreeall.woaar, distribution="bernoulli", n.trees=2450, interaction.depth=1, shrinkage=0.001)
+
+par(mfrow=c(1,1))
+sum.boost.tree.woaar <- summary(boost.tree.woaar)
+sum.boost.tree.woaar$var <- ordered(sum.boost.tree.woaar$var)
+sum.boost.tree.woaar$var <- reorder(sum.boost.tree.woaar$var, sum.boost.tree.woaar$rel.inf)
+sum.boost.tree.woaar <- subset(sum.boost.tree.woaar, sum.boost.tree.woaar$rel.inf > 1)
+plot.boost.tree.woaar <- ggplot(sum.boost.tree.woaar, aes(sum.boost.tree.woaar$var, sum.boost.tree.woaar$rel.inf))
+boostplot5 <-plot.boost.tree.woaar + geom_bar(stat="identity")+
+scale_y_continuous() + coord_flip()+
+  ggtitle("Boosting without age and treatment")+
+  theme(axis.text.y  = element_text(vjust=0.5, size=14))+
+  annotate("text", x = 3, y = 30, label = "CV ROC = 0.69,\n cv = 100x,\n n.trees=2450,\n k=0.001,\n 2.02 min")+
+  ylim(0,50)
+par(mfrow=c(2, 3))
+plot(boost.tree.woaar, i="freqvhmut")
+plot(boost.tree.wofreq, i="X11q_biallelic")
+plot(boost.tree.wofreq, i="trisomy12")
+plot(boost.tree.wofreq, i="NOTCH1_mutation")
+plot(boost.tree.wofreq, i="X11q_monoallelic_mut")
+plot(boost.tree.wofreq, i="clones")
+```
+Without treatment and age, but with freqvhmut, and TP53 combined
+```{r}
+
+facttree.woaar.TP53com <- facttreeall.woaar
+
+facttree.woaar.TP53com$TP53 <- factor(ifelse(facttree.woaar.TP53com$TP53_mutationONLY == "1"|facttree.woaar.TP53com$TP53biallelic == "1", 1, 0))
+set.seed(4)
+tune.boost.tree.woaar.TP53com <- gbm.step(data=facttree.woaar.TP53com,
+     gbm.x = 2:41,
+     gbm.y = 1,
+     family = "bernoulli",
+     tree.complexity = 1,
+     learning.rate = 0.001,
+     bag.fraction = 0.8,
+     n.fold=100)
+ 
+
+boost.tree.woaar.TP53com =gbm(MRD~., facttree.woaar.TP53com, distribution="bernoulli", n.trees=2750, interaction.depth=1, shrinkage=0.001)
+
+par(mfrow=c(1,1))
+sum.boost.tree.woaar.TP53com <- summary(boost.tree.woaar.TP53com)
+sum.boost.tree.woaar.TP53com$var <- ordered(sum.boost.tree.woaar.TP53com$var)
+sum.boost.tree.woaar.TP53com$var <- reorder(sum.boost.tree.woaar.TP53com$var, sum.boost.tree.woaar.TP53com$rel.inf)
+sum.boost.tree.woaar.TP53com <- subset(sum.boost.tree.woaar.TP53com, sum.boost.tree.woaar.TP53com$rel.inf > 1)
+plot.boost.tree.woaar.TP53com <- ggplot(sum.boost.tree.woaar.TP53com, aes(sum.boost.tree.woaar.TP53com$var, sum.boost.tree.woaar.TP53com$rel.inf))
+boostplot6 <-plot.boost.tree.woaar.TP53com + geom_bar(stat="identity")+
+scale_y_continuous() + coord_flip()+
+  ggtitle("Boosting without age and treatment, TP53 combined")+
+  theme(axis.text.y  = element_text(vjust=0.5, size=14))+
+  annotate("text", x = 3, y = 15, label = "CV ROC = 0.682,\n cv = 100x,\n n.trees=2750,\n k=0.001,\n 2.12 min")+
+  ylim(0,50)
+par(mfrow=c(2, 3))
+plot(boost.tree.woaar.TP53com, i="freqvhmut")
+plot(boost.tree.woaar.TP53com, i="X11q_biallelic")
+plot(boost.tree.woaar.TP53com, i="trisomy12")
+plot(boost.tree.woaar.TP53com, i="NOTCH1_mutation")
+plot(boost.tree.woaar.TP53com, i="X11q_monoallelic_mut")
+plot(boost.tree.woaar.TP53com, i="clones")
+```
+Without treatment,age, freqvhmut, and  with TP53 combined
+
+```{r}
+facttree.woaar.wofreq.TP53com <- facttree.woaar.TP53com[c(1, 3:42)]
+
+set.seed(4)
+tune.boost.tree.woaar.wofreq.TP53com <- gbm.step(data=facttree.woaar.wofreq.TP53com,
+     gbm.x = 2:41,
+     gbm.y = 1,
+     family = "bernoulli",
+     tree.complexity = 1,
+     learning.rate = 0.001,
+     bag.fraction = 0.8,
+     n.fold=100)
+ 
+
+boost.tree.woaar.wofreq.TP53com =gbm(MRD~., facttree.woaar.wofreq.TP53com, distribution="bernoulli", n.trees=8650, interaction.depth=1, shrinkage=0.001)
+
+par(mfrow=c(1,1))
+sum.boost.tree.woaar.wofreq.TP53com <- summary(boost.tree.woaar.wofreq.TP53com)
+sum.boost.tree.woaar.wofreq.TP53com$var <- ordered(sum.boost.tree.woaar.wofreq.TP53com$var)
+sum.boost.tree.woaar.wofreq.TP53com$var <- reorder(sum.boost.tree.woaar.wofreq.TP53com$var, sum.boost.tree.woaar.wofreq.TP53com$rel.inf)
+sum.boost.tree.woaar.wofreq.TP53com <- subset(sum.boost.tree.woaar.wofreq.TP53com, sum.boost.tree.woaar.wofreq.TP53com$rel.inf > 1)
+plot.boost.tree.woaar.wofreq.TP53com <- ggplot(sum.boost.tree.woaar.wofreq.TP53com, aes(sum.boost.tree.woaar.wofreq.TP53com$var, sum.boost.tree.woaar.wofreq.TP53com$rel.inf))
+boostplot7 <-plot.boost.tree.woaar.wofreq.TP53com + geom_bar(stat="identity")+
+scale_y_continuous() + coord_flip()+
+  ggtitle("Boosting w/o age, treatment,freqvhmut & TP53 combined")+
+  theme(axis.text.y  = element_text(vjust=0.5, size=14))+
+  annotate("text", x = 3, y = 15, label = "CV ROC = 0.76,\n cv = 100x,\n n.trees=8650,\n k=0.001,\n 9.35 min")+
+  ylim(0,25)
+par(mfrow=c(2, 3))
+plot(boost.tree.woaar.wofreq.TP53com , i="vhmut")
+plot(boost.tree.woaar.wofreq.TP53com , i="X11q_biallelic")
+plot(boost.tree.woaar.wofreq.TP53com , i="TP53")
+plot(boost.tree.woaar.wofreq.TP53com , i="trisomy12")
+plot(boost.tree.woaar.wofreq.TP53com , i="cd38")
+plot(boost.tree.woaar.wofreq.TP53com , i="CNAs")
+plot(boost.tree.woaar.wofreq.TP53com , i="independent_13q")
+
+```
+NOTE:Read partialPlot function!
+
+Compare all four boosted models:
+```{r}
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  require(grid)
+  plots <- c(list(...), plotlist)
+  numPlots = length(plots)
+  if (is.null(layout)) {
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    for (i in 1:numPlots) {
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+multiplot(boostplot1, boostplot2, boostplot3, boostplot4, cols=2)
+
+library(rpart)
+library(rpart.plot)
+rpartdojo <- rpart(facttree.woaar.TP53com$MRD~., method="class", data=facttree.woaar.TP53com, control=rpart.control(minbucket=12))
+par(mfrow=c(1, 1))
+prp(rpartdojo)

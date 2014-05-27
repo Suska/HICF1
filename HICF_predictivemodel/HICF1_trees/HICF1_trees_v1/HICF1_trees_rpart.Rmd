@@ -1,0 +1,121 @@
+HICF1 - factor modelling - TREES
+========================================================
+
+Dr. Susanne Weller 
+16/05/2014
+
+Import merged dataframe
+
+```{r}
+setwd("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees")
+load("genclin.Rda")
+
+#reorder collumns for convenience
+genclin<-genclin[c(1, 7, 2:6, 8:45)]
+genclin<-genclin[c(1, 2, 8, 5, 3, 7, 10, 11, 9, 4, 6, 12:45)]
+
+
+#convert integers to factors
+genclin[,9:45] <- lapply(genclin[,9:45], as.factor)
+levels(genclin$MRD) <- c("-MRD", "+MRD")
+
+#combine genetic factors
+genclin$SAMHD1 <- factor(ifelse(genclin$SAMHD1_1mutationONLY == "1"|genclin$SAMHD1_biallelic_all =="1", "1", "0"))
+genclin$TP53 <- factor(ifelse(genclin$TP53_mutationONLY == "1"|genclin$TP53biallelic =="1", "1", "0"))
+
+```
+
+SIMPLE CLASSIFICATION TREES
+==============================
+
+I. Using Rpart
+-------------------------------
+
+*as agreed on 20/05/2014*
+
+Not using age, treatment, frequvhmut
+
+```{r}
+treegenclin <- genclin[c(2, 7:14, 19:47)]
+
+library(rpart)
+library(rpart.plot)
+rp.treegenclin <- rpart(treegenclin$MRD~., method="class", data=treegenclin, control=rpart.control(minbucket=3, xval=10, cp=0.001),)
+par(mfrow=c(1, 1))
+prp(rp.treegenclin, extra=8)
+prp(rp.treegenclin, extra=8)
+prp(rp.treegenclin, extra=8, fallen.leaves=TRUE)
+
+par(mfrow=c(1, 1))
+prp(rp.treegenclin, extra=8, uniform=FALSE, branch=1, left=FALSE, varlen=0)
+prp(rp.treegenclin, extra=2, uniform=FALSE, branch=1, left=FALSE, varlen=0)
+
+
+library(rattle)
+par(mfrow=c(1, 1))
+fancyRpartPlot(rp.treegenclin, uniform=FALSE, branch=1, left=FALSE)
+
+```
+Cross validate different models to find optimal number of patient in buckets
+============================================================================
+-> The model already contains 10x CV!
+
+Missclassification error is calculated as "Root node error" x "rel. model error"
+
+(1) produce a number of trees iterating over the number of patients in a bucket
+(2) Calculate Missclassification Error rate for those trees
+```{r}
+library(rpart)
+library(rpart.plot)
+source("lastfunction.R")
+
+missclassbybucket <- NULL
+nobuckets <- NULL
+MissClassErr <- NULL
+CorrectClass <- NULL
+for (i in 1:15) {
+# built the tree
+rp.treegenclin <- rpart(treegenclin$MRD~., method="class", data=treegenclin, control=rpart.control(minbucket=i, xval=10, cp=0.001))
+# get the number of buckets
+nobuckets[i] <- i
+# get the root node error (always the same, not dependent on number of buckets)
+rootnoderr[i] <- rp.treegenclin$parm$prior[2]
+
+# Get the rel error for each tree
+rpsum <-printcp(rp.treegenclin)
+relErr <-last(rpsum)
+# Calculate missclassification error
+MissClassErr[i] <-rootnoderr[i]*relErr
+# Calculate correctly classified patients
+CorrectClass[i] <- 209 - MissClassErr[i]*209
+}
+ 
+par(mfrow=c(2, 2))
+
+plot(nobuckets, MissClassErr)
+plot(nobuckets, CorrectClass)
+rp.treegenclinbuk1 <- rpart(treegenclin$MRD~., method="class", data=treegenclin, control=rpart.control(minbucket=1, xval=10))
+prp(rp.treegenclinbuk1, extra=8, uniform=FALSE, branch=1, left=FALSE, varlen=0, main="Min. 1 patient per end group")
+rp.treegenclinbuk5 <- rpart(treegenclin$MRD~., method="class", data=treegenclin, control=rpart.control(minbucket=5, xval=10))
+prp(rp.treegenclinbuk5, extra=8, uniform=FALSE, branch=1, left=FALSE, varlen=0, main="Min. 5 patient per end group")
+
+
+
+
+
+#How many patients do we get right with our tree?
+CorrectClass <- nrow(treegenclin) - MissClassErr*nrow(treegenclin) 
+}
+```
+(2) Calculate Missclassification Error rate for those trees
+    - How many patients do we get right with our tree?
+
+(3) Relate bucket size to Missclassification Error
+
+```{r}
+
+Compare all four boosted models:
+```{r}
+source("multiplotfunction.R")
+source("lastfunction.R")
+multiplot(fancyRpartPlot(rp.treegenclin, uniform=FALSE, branch=1, left=FALSE))

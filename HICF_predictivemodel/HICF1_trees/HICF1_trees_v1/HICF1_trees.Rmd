@@ -1,0 +1,201 @@
+HICF1 - factor modelling - TREES
+========================================================
+
+Dr. Susanne Weller 
+16/05/2014
+
+Import merged dataframe
+
+```{r}
+setwd("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees")
+load("genclin.Rda")
+
+#reorder collumns for convenience
+genclin<-genclin[c(1, 7, 2:6, 8:45)]
+genclin<-genclin[c(1, 2, 8, 5, 3, 7, 10, 11, 9, 4, 6, 12:45)]
+
+
+#convert integers to factors
+genclin[,9:45] <- lapply(genclin[,9:45], as.factor)
+levels(genclin$MRD) <- c("+MRD", "-MRD")
+
+
+```
+
+USING THE CLASSIC TREE PACKAGE
+==============================
+
+I. SIMPLE CLASSIFICATION TREES
+-------------------------------
+
+Only genetic data:
+
+```{r}
+
+library(tree)
+treegenetic <- genclin[c(2,6,8:45)]
+tree.genetic <- tree(MRD~., treegenetic)
+summary(tree.genetic)
+
+plot(tree.genetic)
+text(tree.genetic, pretty = 0)
+
+```
+
+Using all available data
+```{r}
+treeall <- genclin[c(2,4:45)]
+tree.all <- tree(MRD~., treeall)
+summary(tree.all)
+
+plot(tree.all)
+text(tree.all, pretty = 0)
+```
+
+Using all data except vhmut, freqvhmut, aar
+```{r}
+wofreq.wovhmut.woaar <- genclin[c(2,4,7:10, 12:45)]
+tree.wofreq.wovhmut.woaar <- tree(MRD~., wofreq.wovhmut.woaar)
+summary(tree.wofreq.wovhmut.woaar)
+
+plot(tree.wofreq.wovhmut.woaar)
+text(tree.wofreq.wovhmut.woaar, pretty = 0)
+```
+
+II. SIMPLE CROSS VALIDATION
+---------------------------
+
+```{r}
+
+set.seed(5)
+train1 <- sample(1:nrow(genclin), 139)
+tree.test1 <- genclin[-train1,]
+tree.train1 <- genclin[train1,]
+MRD.test=treeall$MRD[-train1]
+
+tree.train <- tree(MRD~., treeall, subset=train1)
+summary(tree.train)
+tree.pred=predict(tree.train, tree.test1, type="class")
+table(tree.pred, MRD.test)
+```
+
+III. COST COMPLEXITY PRUNING
+----------------------------
+
+Using only the training data set
+
+```{r}
+
+set.seed(3)
+cv.treetrain <- cv.tree(tree.train, FUN=prune.misclass)
+cv.treetrain
+
+par(mfrow=c(1,2))
+plot(cv.treetrain$size, cv.treetrain$dev, type="b")
+plot(cv.treetrain$k, cv.treetrain$dev, type="b")
+
+prune.train1 <- prune.misclass(tree.train, best=4)
+plot(prune.train1)
+text(prune.train1, pretty=0)
+summary(prune.train1)
+```
+Note: This pruning results in an improvement of 0.006, possibly due to the fact that the original tree suffered from high variance
+
+
+Using the whole data set
+
+```{r}
+set.seed(5)
+cv.tree.all <- cv.tree(tree.all, FUN=prune.misclass)
+cv.tree.all
+
+par(mfrow=c(1,2))
+plot(cv.tree.all$size, cv.tree.all$dev, type="b")
+plot(cv.tree.all$k, cv.tree.all$dev, type="b")
+
+prune.tree.all <- prune.misclass(tree.all, best=4)
+plot(prune.tree.all)
+text(prune.tree.all, pretty=0)
+summary(prune.tree.all)
+```
+
+without freqvhmut
+```{r}
+wofreq <- genclin[c(2,4,5,7:45)]
+tree.freq <- tree(MRD~., wofreq)
+summary(tree.freq)
+
+plot(tree.freq)
+text(tree.freq, pretty = 0)
+
+set.seed(5)
+cv.tree.freq <- cv.tree(tree.freq, FUN=prune.misclass)
+cv.tree.freq
+
+par(mfrow=c(1,2))
+plot(cv.tree.freq$size, cv.tree.freq$dev, type="b")
+plot(cv.tree.freq$k, cv.tree.freq$dev, type="b")
+
+prune.tree.freq <- prune.misclass(tree.freq, best=8)
+par(mfrow=c(1,1))
+plot(prune.tree.freq)
+text(prune.tree.freq, pretty=0)
+mtext("0.2418%", side=3)
+summary(prune.tree.freq)
+```
+
+without freqmut, vhmut, age
+```{r}
+set.seed(5)
+cv.tree.wofreq.vhmut.aar <- cv.tree(tree.wofreq.wovhmut.woaar, FUN=prune.misclass)
+cv.tree.wofreq.vhmut.aar 
+
+par(mfrow=c(1,2))
+plot(cv.tree.wofreq.vhmut.aar$size, cv.tree.wofreq.vhmut.aar$dev, type="b")
+plot(cv.tree.wofreq.vhmut.aar$k, cv.tree.wofreq.vhmut.aar$dev, type="b")
+
+prune.tree.wofreq.vhmut.aar <- prune.misclass(tree.wofreq.wovhmut.woaar, best=8)
+par(mfrow=c(1,1))
+plot(prune.tree.wofreq.vhmut.aar)
+text(prune.tree.wofreq.vhmut.aar, pretty=0)
+mtext("0.2836%", side=3)
+summary(prune.tree.wofreq.vhmut.aar)
+```
+
+USING RPART
+===========
+
+
+
+
+
+
+
+```
+Compare all four boosted models:
+```{r}
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  require(grid)
+  plots <- c(list(...), plotlist)
+  numPlots = length(plots)
+  if (is.null(layout)) {
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    for (i in 1:numPlots) {
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+multiplot(boostplot1, boostplot2, boostplot3, boostplot4, cols=2)
