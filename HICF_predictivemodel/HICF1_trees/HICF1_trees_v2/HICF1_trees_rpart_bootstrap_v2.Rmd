@@ -31,7 +31,7 @@ genclinv2$TP53 <- factor(ifelse(genclinv2$TP53_mutationONLY == "1"|genclinv2$TP5
 ```
 
 Simple bootstrap on our variables
-===========================
+=================================
 
 Not using age, treatment, freqvhmut
 
@@ -40,54 +40,47 @@ treegenclin <- genclinv2[c(6:49)]
 
 library(rpart)
 library(rpart.plot)
+library(boot)
 ```
 
 (1) Write a function that produces an output for a single statistic
   -> Missclassification Error (can later be translated into number of patients)
 ```{r}
-
-rootnode <- function(data){
-#this builts the rpart model
-rp.tree <- rpart(data$MRD~., method="class", data=data, control=rpart.control(minbucket=1, xval=10, cp=0.001))
-# get the root node error
-rootnoderr <- rp.tree$parms$prior[2]
-return(rootnoderr)
-}
-
-relErr <- function(data){
-#this builts the rpart model
-rp.tree <- rpart(data$MRD~., method="class", data=data, control=rpart.control(minbucket=1, xval=10, cp=0.001))
-rpsum <-printcp(rp.tree)
-source("lastfunction.R")
-relErr <-last(rpsum)
-return(relErr)
-}
-
-
-MissClassErr <- function(data, index){
-  rootnode(data[index,])*relErr(data[index,])
-  }
+# All wrapped up and stored in another R skript.
+source("MissClassErr.R")
 
 ```
 (2) Now use the same function with bootstrapped sample set
 ```{r}
 set.seed(3)
+boottreegenclin <- boot(treegenclin, MissClassErr, R=1000)
+```
+(3) capture standard deviation and bias, and confidence intervall
+```{r}
+bootoutput <-capture.output(boottreegenclin)
+#original:
+boottreegenclin$t0
+#bias:
+mean(boottreegenclin$t)-boottreegenclin$t0
+#se: 
+sd(boottreegenclin$t)
+# Confidence intervall (95%)
+boot.ci(boottreegenclin)
+```
+
+Bootstrap over all possible combinations of cp and minbucket
+============================================================
 
 
-test3=MissClassErr(treegenclin, sample(209, 209, replace=TRUE))
-
-
-boot(treegenclin, MissClassErr, R=1000)
-
-
-xtreegenclin 
+```{r} 
+for (cp in c(0.01, 0.009, 0.008, 0.006, 0.004, 0.002, 0.001)){
 source("lastfunction.R")
-
   missclassbybucket <- NULL
   nobuckets <- NULL
   MissClassErr <- NULL
   CorrectClass <- NULL
   rootnoderr <- NULL
+  SDboottreegenclin <- NULL
   for (i in 1:15) {
     # built the tree
     rp.treegenclin <- rpart(treegenclin$MRD~., method="class", data=treegenclin, control=rpart.control(minbucket=i, xval=10, cp=cp))
@@ -100,39 +93,73 @@ source("lastfunction.R")
     relErr <-last(rpsum)
     # Calculate missclassification error
     MissClassErr[i] <-rootnoderr[i]*relErr
-    # Calculate correctly classified patients
-    CorrectClass[i] <- 209 - MissClassErr[i]*209
+    #BOOTSTRAP FOR THIS PARTICULA RPART MODEL 
+    #tell the bootstrap function the data only:
+    rootnodeboot <- function(data, i, cp){
+    #this builts the rpart model
+    rp.tree <- rpart(data$MRD~., method="class", data=data, control=rpart.control(minbucket=i, xval=10, cp=cp))
+    # get the root node error
+    rootnoderr <- rp.tree$parms$prior[2]
+    return(rootnoderr)
     }
+    relErrboot <- function(data, i, cp){
+    #this builts the rpart model
+    rp.tree <- rpart(data$MRD~., method="class", data=data, control=rpart.control(minbucket=i, xval=10, cp=cp))
+    rpsum <-printcp(rp.tree)
+    source("lastfunction.R")
+    relErr <-last(rpsum)
+    return(relErr)
+    }
+    MissClassErrBoot <- function(data, index){rootnodeboot(data[index,], i, cp)*relErrboot(data[index,], i, cp)}
+    set.seed(3)
+    boottreegenclin <- boot(treegenclin, MissClassErrBoot, R=1000)
+    SDboottreegenclin[i] <-(boottreegenclin$t)
+    }
+
 if (cp==0.01){
-plot(nobuckets, CorrectClass, pch=0, type="o", ylim=c(150, 209), main="All data without age, treatment, freqvhmut")
+plot(nobuckets, MissClassErr, pch=0, type="o", ylim=c(-0.1, 0.6), main="All data without age, treatment, freqvhmut, cvboot=1000")
+arrows(nobuckets,MissClassErr-SDboottreegenclin,nobuckets,MissClassErr+SDboottreegenclin,code=3,length=0.2,angle=90,col='black')
 }
 else {
-  if (cp==0.008){
-  lines(CorrectClass, type="o", pch=1, col="green")
+  if (cp==0.009){
+  lines(x=nobuckets+0.05, MissClassErr, type="o", pch=1, col="green")
+  arrows(nobuckets+0.05,MissClassErr-SDboottreegenclin,nobuckets+0.05,MissClassErr+SDboottreegenclin,code=3,length=0.2,angle=90,col='green')
   }
   else {
-    if (cp==0.006){
-    lines(CorrectClass, type="o", pch=2, col="blue")
+    if (cp==0.008){
+    lines(x=nobuckets+0.10, MissClassErr, type="o", pch=2, col="blue")
+    arrows(nobuckets+0.10,MissClassErr-SDboottreegenclin,nobuckets+0.10,MissClassErr+SDboottreegenclin,code=3,length=0.2,angle=90,col='blue')
     }
     else {
-      if (cp==0.004){
-      lines(CorrectClass, type="o", pch=3, col="orange")
+      if (cp==0.006){
+      lines(x=nobuckets+0.15, MissClassErr, type="o", pch=3, col="orange")
+      arrows(nobuckets+0.15,MissClassErr-SDboottreegenclin,nobuckets+0.15,MissClassErr+SDboottreegenclin,code=3,length=0.2,angle=90,col='orange')
       }  
       else {
-        if (cp==0.002){
-        lines(CorrectClass, type="o", pch=4, col="purple")
-      }
+        if (cp==0.004){
+        lines(x=nobuckets+0.20, MissClassErr, type="o", pch=4, col="purple")
+        arrows(nobuckets+0.20,MissClassErr-SDboottreegenclin,nobuckets+0.20,MissClassErr+SDboottreegenclin,code=3,length=0.2,angle=90,col='purple')
+        }
         else {
-          if (cp==0.001){
-          lines(CorrectClass, type="o", pch=5, col="red")
+          if (cp==0.002){
+          lines(x=nobuckets+0.25, MissClassErr, type="o", pch=5, col="darkslategray4")
+          arrows(nobuckets+0.25,MissClassErr-SDboottreegenclin,nobuckets+0.25,MissClassErr+SDboottreegenclin,code=3,length=0.2,angle=90,col='darkslategray4')
           }
-           }}}}}
-legend(5, 210, c("0.01", "0.008", "0.006", "0.004", "0.002", "0.001"), cex=0.8, 
-   col=c("black","green", "blue", "orange", "purple", "red"), pch=0:5)
+          else {
+            if (cp==0.001){
+            lines(x=nobuckets+0.30, MissClassErr, type="o", pch=6, col="red")
+            arrows(nobuckets+0.30,MissClassErr-SDboottreegenclin,nobuckets+0.30,MissClassErr+SDboottreegenclin,code=3,length=0.2,angle=90,col='red')
+            }}}}}}}
+legend(1, 0.7, c("0.01", "0.009", "0.008", "0.006", "0.004", "0.002", "0.001"), cex=0.7, 
+   col=c("black", "green", "blue", "orange", "purple", "darkslategray4", "red"), pch=0:6)
 }
+ 
+
 #plot best tree with these variables
 rp.treegenclinbuk1cp001 <- rpart(treegenclin$MRD~., method="class", data=treegenclin, control=rpart.control(minbucket=1, xval=10, cp=0.001))
 prp(rp.treegenclinbuk1cp001, extra=8, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="All data without age, treatment, freqvhmut \n cp=0.001")
+
+
 ```
 William 2011 (Clin. Oncol.)
 ==========================
@@ -408,3 +435,14 @@ legend(5, 210, c("0.01", "0.008", "0.006", "0.004", "0.002", "0.001"), cex=0.8,
 #plot best tree with these variables
 rp.treerosenq <- rpart(treerosenq$MRD~., method="class", data=treerosenq, control=rpart.control(minbucket=1, xval=10, cp=0.001))
 prp(rp.treerosenq, extra=8, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="Variables proposed for Health Economics Plan \n cp=0.001, minbucket=1")
+```
+test for function in for loops
+```{r}
+
+for i in (1:10){
+  function (x, i){
+    sq <- x
+  }
+}
+
+qplot(x,y)+geom_errorbar(aes(x=x, ymin=y-sd, ymax=y+sd), width=0.25)
