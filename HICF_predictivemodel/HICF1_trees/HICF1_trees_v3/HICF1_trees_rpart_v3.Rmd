@@ -1,0 +1,535 @@
+HICF1 - factor modelling - TREES - V2
+========================================================
+
+Dr. Susanne Weller 
+27/05/2014
+
+Import merged dataframe - v2
+
+```{r}
+setwd("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3")
+load("genclinv3.Rda")
+library(plyr)
+
+#reorder collumns for convenience
+genclinv3<-genclinv3[c(1, 4, 8, 2, 6, 5, 50, 3, 7, 9:11, 13, 15:50, 53:57 )]
+genclinv3$X11q_monoallelic_mut <- NULL
+genclinv3$Binet.x.1 <- NULL
+genclinv3 <-rename(genclinv3, c("X11q_monoallelic_del.y"="X11q_mono_del", "X11q_biallelic.y"="X11q_biallelic"))
+names(genclinv3)[7]<- "Binet"
+                                
+#convert integers to factors
+
+genclinv3$vhmut <- as.factor(genclinv3$vhmut)
+levels(genclinv3$MRD) <- c("-MRD", "+MRD")
+genclinv3$cd38 <- as.factor(genclinv3$cd38)
+genclinv3[,13:47] <- lapply(genclinv3[,13:47], as.factor)
+
+#combine genetic factors
+genclinv3$SAMHD1 <- factor(ifelse(genclinv3$SAMHD1_1mutationONLY == "1"|genclinv3$SAMHD1_biallelic_all =="1", "1", "0"))
+genclinv3$TP53 <- factor(ifelse(genclinv3$TP53_mutationONLY == "1"|genclinv3$TP53biallelic =="1", "1", "0"))
+genclinv3 <- genclinv3[c(1:47, 53:54, 48:52)]
+
+```
+
+SIMPLE CLASSIFICATION TREES - with blood data added
+===================================================
+
+```{r}
+treegenclin <- genclinv3[c(6:54)]
+
+library(rpart)
+library(rpart.plot)
+source("lastfunction.R")
+
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_03062014/01_MissClassErr_alldata.pdf")
+par(mfrow=c(1, 1))
+for (cp in c(0.01, 0.009, 0.008, 0.006, 0.004, 0.002, 0.001)){
+  source("lastfunction.R")
+  nobuckets <- NULL
+  MissClassErr <- NULL
+  CorrectClass <- NULL
+  rootnoderr <- NULL
+  relErr <- NULL
+  for (i in 1:15) {
+    # built the tree
+    rp.treegenclin <- rpart(treegenclin$MRD~., method="class", data=treegenclin, control=rpart.control(minbucket=i, xval=10, cp=cp))
+    # get the number of buckets
+    nobuckets[i] <- i
+    # get the root node error
+    rootnoderr[i] <- rp.treegenclin$parms$prior[2]
+    # Get the rel error for each tree
+    rpsum <-printcp(rp.treegenclin)
+    relErr[i] <-last(rpsum)
+    # Calculate missclassification error
+    MissClassErr[i] <-rootnoderr[i]*relErr[i]
+    # Calculate correctly classified patients
+    CorrectClass[i] <- 209 - MissClassErr[i]*209
+    }
+MissClassErr
+if (cp==0.01){
+plot(nobuckets, MissClassErr, pch=0, type="o", ylim=c(0, 0.4), main="All data without age, treatment, freqvhmut", xlab="No. of patients in end group\n(more patients=less complex model)", ylab="Missclassification error=fraction of patients that will be put in wrong group ")
+legend(12, 0.2, c("0.01", "0.009", "0.008", "0.006", "0.004", "0.002", "0.001"), cex=0.8, col=c("black","green", "blue", "orange", "purple", "darkslategray4", "red"), pch=0:6, title="complexity:\n lower = more complex")
+}
+if (cp==0.009){
+lines(x=nobuckets+0.05, MissClassErr, type="o", pch=1, col="green")
+}
+if (cp==0.008){
+lines(x=nobuckets+0.1, MissClassErr, type="o", pch=2, col="blue")
+}
+if (cp==0.006){
+lines(x=nobuckets+0.15, MissClassErr, type="o", pch=3, col="orange")
+}  
+if (cp==0.004){
+lines(x=nobuckets+0.20, MissClassErr, type="o", pch=4, col="purple")
+}
+if (cp==0.002){
+lines(x=nobuckets+0.25, MissClassErr, type="o", pch=5, col="darkslategray4")
+}
+if (cp==0.001){
+lines(x=nobuckets+0.30,MissClassErr, type="o", pch=6, col="red")
+}
+}
+dev.off()
+
+
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_03062014/02_tree_alldata_cp001_buk1.pdf")
+#plot best tree with these variables
+rp.treegenclinbuk3cp008 <- rpart(treegenclin$MRD~., method="class", data=treegenclin, control=rpart.control(minbucket=1, xval=10, cp=0.001))
+prp(rp.treegenclinbuk3cp008, extra=8, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="All data without age, treatment, freqvhmut \n cp=0.001, endgroup=1, MissClassErr~0.01% ")
+dev.off()
+
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_03062014/03_tree_alldata_cp01_buk5.pdf")
+rp.treegenclinbuk5cp01 <- rpart(treegenclin$MRD~., method="class", data=treegenclin, control=rpart.control(minbucket=5, xval=10, cp=0.01))
+prp(rp.treegenclinbuk5cp01, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="All data without age, treatment, freqvhmut \n cp=0.01, endgroup=5, MissClassErr~15% ", )
+dev.off()
+
+
+#rp.treegenclinbuk2cp001 <- rpart(treegenclin$MRD~., method="class", data=treegenclin, control=rpart.control(minbucket=2, xval=10, cp=0.001))
+#pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/04_tree_alldata_cp001_buk2.pdf")
+# prp(rp.treegenclinbuk3cp008, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="All data without age, treatment, freqvhmut \n cp=0.008, endgroup=3, MissClassErr~21% ", )
+# dev.off()
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/05_tree_alldata_cp001_buk2.pdf")
+# prp(rp.treegenclinbuk2cp001, extra=8, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="All data without age, treatment, freqvhmut \n cp=0.001, endgroup=2, MissClassErr~12% ", )
+# dev.off()
+```
+Checking frequency distributions of blood data:
+===============================================
+```{r}
+
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_03062014/04_hist_haem.pdf")
+hist(genclinv3$haem, breaks=24)
+abline(v=11,col=3,lty=1)
+abline(v=9.1,col=4,lty=1)
+dev.off()
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_03062014/05_hist_plat.pdf")
+hist(genclinv3$plat, breaks=24)
+abline(v=148,col=4,lty=1)
+dev.off()
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_03062014/06_hist_WBC.pdf")
+hist(genclinv3$WBC, breaks=20)
+abline(v=289,col=4,lty=1)
+abline(v=76,col=4,lty=1)
+dev.off()
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_03062014/07_hist_ANC.pdf")
+hist(genclinv3$ANC_Neutro, breaks=15)
+abline(v=52,col=4,lty=1)
+dev.off()
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_03062014/08_hist_ALC.pdf")
+hist(genclinv3$ALC_Lympho, breaks=20)
+abline(v=20,col=4,lty=1)
+dev.off()
+```
+Principal component analysis for blood data:
+============================================
+
+Objective:
+Check if all blood variables point in the same direction, e.g. could be reduced to one variable
+
+```{r}
+
+require(FactoMineR) 
+# PCA with function PCA
+
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_03062014/09_pca_blood.pdf")
+#Classify blood variables
+blood_pca <- PCA(genclinv3[50:54], scale.unit=TRUE, ncp=5, graph=T)
+dev.off()
+
+#scale all the features,  ncp: number of dimensions kept in the results (by default 5)
+#blood_load <- dimdesc(blood_pca)
+#patient_load
+#blood_importance_c1 <- as.data.frame(blood_load$Dim.1$quanti)
+
+
+km.out=kmeans(genclinv3[50:54],2,nstart=10, na.omit=TRUE)
+km.out
+
+
+# William 2011 (Clin. Oncol.)
+# ==========================
+# - 17q del (FISH)
+# - 11q del (FISH)
+# - vhmut
+# - gender
+# - tri12
+# - cd38
+# - 12q del (FISH)
+# 
+# ```{r}
+# treewilliam <- genclinv2[c(6, 8, 9, 10, 19, 46, 35)]
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/06_MissClassErr_william.pdf")
+# par(mfrow=c(1, 1))
+# 
+# for (cp in c(0.01, 0.009, 0.008, 0.006, 0.004, 0.002, 0.001)){
+#   source("lastfunction.R")
+#   nobuckets <- NULL
+#   MissClassErr <- NULL
+#   CorrectClass <- NULL
+#   rootnoderr <- NULL
+#   relErr <- NULL
+#   for (i in 1:20) {
+#     # built the tree
+#     rp.treewilliam <- rpart(treewilliam$MRD~., method="class", data=treewilliam, control=rpart.control(minbucket=i, xval=10, cp=cp))
+#     # get the number of buckets
+#     nobuckets[i] <- i
+#     # get the root node error
+#     rootnoderr[i] <- rp.treewilliam$parms$prior[2]
+#     # Get the rel error for each tree
+#     rpsum <-printcp(rp.treewilliam)
+#     relErr[i] <-last(rpsum)
+#     # Calculate missclassification error
+#     MissClassErr[i] <-rootnoderr[i]*relErr[i]
+#     # Calculate correctly classified patients
+#     CorrectClass[i] <- 209 - MissClassErr[i]*209
+#     }
+# if (cp==0.01){
+# plot(nobuckets, MissClassErr, pch=0, type="o", ylim=c(0, 0.4), main="Variables used in William 2011", xlab="No. of patients in end group\n(more patients=less complex model)", ylab="Missclassification error=fraction of patients that will be put in wrong group ")
+# legend(12, 0.2, c("0.01", "0.009", "0.008", "0.006", "0.004", "0.002", "0.001"), cex=0.8, col=c("black","green", "blue", "orange", "purple", "darkslategray4", "red"), pch=0:7, title="complexity:\n lower = more complex")
+# }
+# if (cp==0.009){
+# lines(x=nobuckets+0.05, MissClassErr, type="o", pch=1, col="green")
+# }
+# if (cp==0.008){
+# lines(x=nobuckets+0.1, MissClassErr, type="o", pch=2, col="blue")
+# }
+# if (cp==0.006){
+# lines(x=nobuckets+0.15, MissClassErr, type="o", pch=3, col="orange")
+# }  
+# if (cp==0.004){
+# lines(x=nobuckets+0.20, MissClassErr, type="o", pch=4, col="purple")
+# }
+# if (cp==0.002){
+# lines(x=nobuckets+0.25, MissClassErr, type="o", pch=5, col="darkslategray4")
+# }
+# if (cp==0.001){
+# lines(x=nobuckets+0.30,MissClassErr, type="o", pch=6, col="red")
+# }
+# }
+# dev.off()
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/07_tree_william_cp001_buk4.pdf")
+# #plot best tree with these variables
+# rp.treewilliam <- rpart(treewilliam$MRD~., method="class", data=treewilliam, control=rpart.control(minbucket=4, xval=10, cp=0.01))
+# prp(rp.treewilliam, extra=8, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="Variables used in William 2011 \n cp=0.001, endgroup=4, MissClassErr~34% ")
+# dev.off()
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/08_tree_william_cp001_buk4.pdf")
+# prp(rp.treewilliam, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="Variables used in William 2011 \n cp=0.001, endgroup=4, MissClassErr~34% ")
+# dev.off()
+# ```
+# Rossi 2014 (Blood)
+# ==========================
+# - TP53 disruption *(TP53_mutationONLY, TP53biallelic, TP53)*
+# - BIRC3 disruption (45)
+# - SF3B1 mutation
+# - NOTCH1 mutation
+# - 11q del (46)
+# ```{r}
+# treerossi <- genclinv2[c(9, 15, 16, 17, 18, 46, 49, 45)]
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/09_MissClassErr_rossi.pdf")
+# par(mfrow=c(1, 1))
+# for (cp in c(0.01, 0.008, 0.006, 0.004, 0.002, 0.001)){
+#   missclassbybucket <- NULL
+#   nobuckets <- NULL
+#   MissClassErr <- NULL
+#   CorrectClass <- NULL
+#   rootnoderr <- NULL
+#   for (i in 1:20) {
+#     # built the tree
+#     rp.treerossi <- rpart(treerossi$MRD~., method="class", data=treerossi, control=rpart.control(minbucket=i, xval=10, cp=cp))
+#     # get the number of buckets
+#     nobuckets[i] <- i
+#     # get the root node error
+#     rootnoderr[i] <- rp.treerossi$parms$prior[2]
+#     # Get the rel error for each tree
+#     rpsum <-printcp(rp.treerossi)
+#     relErr <-last(rpsum)
+#     # Calculate missclassification error
+#     MissClassErr[i] <-rootnoderr[i]*relErr
+#     # Calculate correctly classified patients
+#     CorrectClass[i] <- 209 - MissClassErr[i]*209
+#     }
+# if (cp==0.01){
+# plot(nobuckets, MissClassErr, pch=0, type="o", ylim=c(0, 0.6), main="Variables used in Rossi 2014", xlab="No. of patients in end group\n(more patients=less complex model)", ylab="Missclassification error=fraction of patients that will be put in wrong group ")
+# legend(12, 0.3, c("0.01", "0.008", "0.006", "0.004", "0.002", "0.001"), cex=0.8,col=c("black","green", "blue", "orange", "purple", "red"), pch=0:5, title="complexity \n low-> more complex")
+# }
+# if (cp==0.008){
+# lines(MissClassErr, type="o", pch=1, col="green")
+# }
+# if (cp==0.006){
+# lines(MissClassErr, type="o", pch=2, col="blue")
+# }
+# if (cp==0.004){
+# lines(MissClassErr, type="o", pch=3, col="orange")
+# }  
+# if (cp==0.002){
+# lines(MissClassErr, type="o", pch=4, col="purple")
+# }
+# if (cp==0.001){
+# lines(MissClassErr, type="o", pch=5, col="red")
+# }
+# }
+# dev.off()
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/10_tree_rossi_cp001_buk2.pdf")
+# #plot best tree with these variables
+# rp.treerossi <- rpart(treerossi$MRD~., method="class", data=treerossi, control=rpart.control(minbucket=2, xval=10, cp=0.001))
+# prp(rp.treerossi, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="Variables used in Rossi 2014 \n cp=0.001, minbucket= 2, MissClassErr~38%")
+# dev.off()
+# 
+# ```
+# Rosenquist 2014 (Leukemia)
+# ==========================
+# - TP53 *(TP53_mutationONLY, TP53biallelic, TP53)*
+# - BIRC3
+# - SF3B1
+# - NOTCH1
+# - del 17p (35)*(X17q11q12)*
+# - del 11q (46)
+# - trisomy 12 (19)
+# - del 13q (39:41) *(X13q_hom. X13q_het, X13q_redefinedMRD_loss_4)*
+# - MYD88 (24)
+# - CNA (12)
+# ```{r}
+# treerosenq <- genclinv2[c(9, 15, 16, 17, 18, 19, 45, 24, 35, 39:41, 46, 49, 12)]
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/11_MissClassErr_rosenquist.pdf")
+# par(mfrow=c(1, 1))
+# for (cp in c(0.01, 0.008, 0.006, 0.004, 0.002, 0.001)){
+#   missclassbybucket <- NULL
+#   nobuckets <- NULL
+#   MissClassErr <- NULL
+#   CorrectClass <- NULL
+#   rootnoderr <- NULL
+#   for (i in 1:20) {
+#     # built the tree
+#     rp.treerosenq <- rpart(treerosenq$MRD~., method="class", data=treerosenq, control=rpart.control(minbucket=i, xval=10, cp=cp))
+#     # get the number of buckets
+#     nobuckets[i] <- i
+#     # get the root node error
+#     rootnoderr[i] <- rp.treerosenq$parms$prior[2]
+#     # Get the rel error for each tree
+#     rpsum <-printcp(rp.treerosenq)
+#     relErr <-last(rpsum)
+#     # Calculate missclassification error
+#     MissClassErr[i] <-rootnoderr[i]*relErr
+#     # Calculate correctly classified patients
+#     CorrectClass[i] <- 209 - MissClassErr[i]*209
+#     }
+# if (cp==0.01){
+# plot(nobuckets, MissClassErr, pch=0, type="o", ylim=c(0, 0.5), main="Variables used in Rosenquist 2014", xlab="No. of patients in end group\n(more patients=less complex model)", ylab="Missclassification error=fraction of patients that will be put in wrong group ")
+# legend(12, 0.3, c("0.01", "0.008", "0.006", "0.004", "0.002", "0.001"), cex=0.8,col=c("black","green", "blue", "orange", "purple", "red"), pch=0:5, title="complexity \n low-> more complex")
+# }
+# if (cp==0.008){
+# lines(MissClassErr, type="o", pch=1, col="green")
+# }
+# if (cp==0.006){
+# lines(MissClassErr, type="o", pch=2, col="blue")
+# }
+# if (cp==0.004){
+# lines(MissClassErr, type="o", pch=3, col="orange")
+# }  
+# if (cp==0.002){
+# lines(MissClassErr, type="o", pch=4, col="purple")
+# }
+# if (cp==0.001){
+# lines(MissClassErr, type="o", pch=5, col="red")
+# }
+# }
+# dev.off()
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/12_tree_rosenq_cp001_buk1.pdf")
+# #plot best tree with these variables
+# rp.treerosenq <- rpart(treerosenq$MRD~., method="class", data=treerosenq, control=rpart.control(minbucket=1, xval=10, cp=0.001))
+# prp(rp.treerosenq, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="Variables used in Rosenquist 2014 \n cp=0.001, minbucket= 1, MissClassErr~25%")
+# dev.off()
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/13_tree_rosenq_cp001_buk3.pdf")
+# rp.treerosenq <- rpart(treerosenq$MRD~., method="class", data=treerosenq, control=rpart.control(minbucket=3, xval=10, cp=0.001))
+# prp(rp.treerosenq, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="Variables used in Rosenquist 2014 \n cp=0.001, minbucket= 3, MissClassErr~25%")
+# dev.off()
+# 
+# ```
+# Health Economic Plan (HEP)
+# ==========================
+# - TP53 *(TP53_mutationONLY, TP53biallelic, TP53)*
+# - Isolated del_13q (39:41)  *(X13q_hom. X13q_het, X13q_redefinedMRD_loss_4)*
+# - Isolated trisomy 12 (19)
+# - NOTCH1 (18)
+# - del_11q (46)
+# - SF3B1 (17)
+# - BIRC3 del *(BIRC3_mutation)*
+# - subclones (11)
+# - SAMHD1 (13, 14)
+# - MED12
+# 
+# - TP53 
+# - BIRC3
+# - SF3B1 (17)
+# - NOTCH1 (18)
+# - del 17p (35)*(X17q11q12)*
+# - del 11q (46)
+# - trisomy 12 (19)
+# - del 13q 
+# - MYD88 (24)
+# 
+# ```{r}
+# treehep <- genclinv2[c(9, 15, 16, 49, 39:41, 19, 18, 46, 17, 11, 13, 14, 25)]
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/14_MissClassErr_hep.pdf")
+# par(mfrow=c(1, 1))
+# for (cp in c(0.01, 0.008, 0.006, 0.004, 0.002, 0.001)){
+#   missclassbybucket <- NULL
+#   nobuckets <- NULL
+#   MissClassErr <- NULL
+#   CorrectClass <- NULL
+#   rootnoderr <- NULL
+#   for (i in 1:20) {
+#     # built the tree
+#     rp.treehep <- rpart(treehep$MRD~., method="class", data=treehep, control=rpart.control(minbucket=i, xval=10, cp=cp))
+#     # get the number of buckets
+#     nobuckets[i] <- i
+#     # get the root node error
+#     rootnoderr[i] <- rp.treehep$parms$prior[2]
+#     # Get the rel error for each tree
+#     rpsum <-printcp(rp.treehep)
+#     relErr <-last(rpsum)
+#     # Calculate missclassification error
+#     MissClassErr[i] <-rootnoderr[i]*relErr
+#     # Calculate correctly classified patients
+#     CorrectClass[i] <- 209 - MissClassErr[i]*209
+#     }
+# if (cp==0.01){
+# plot(nobuckets, MissClassErr, pch=0, type="o", ylim=c(0, 0.5), main="Variables proposed for Health Economic Plan", xlab="No. of patients in end group\n(more patients=less complex model)", ylab="Missclassification error=fraction of patients that will be put in wrong group ")
+# legend(12, 0.3, c("0.01", "0.008", "0.006", "0.004", "0.002", "0.001"), cex=0.8,col=c("black","green", "blue", "orange", "purple", "red"), pch=0:5, title="complexity \n low-> more complex")
+# }
+# if (cp==0.008){
+# lines(MissClassErr, type="o", pch=1, col="green")
+# }
+# if (cp==0.006){
+# lines(MissClassErr, type="o", pch=2, col="blue")
+# }
+# if (cp==0.004){
+# lines(MissClassErr, type="o", pch=3, col="orange")
+# }  
+# if (cp==0.002){
+# lines(MissClassErr, type="o", pch=4, col="purple")
+# }
+# if (cp==0.001){
+# lines(MissClassErr, type="o", pch=5, col="red")
+# }
+# }
+# dev.off()
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/15_tree_hep_cp001_buk1.pdf")
+# #plot best tree with these variables
+# rp.treehep <- rpart(treehep$MRD~., method="class", data=treehep, control=rpart.control(minbucket=1, xval=10, cp=0.001))
+# prp(rp.treehep, extra=8, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="Variables proposed for Health Economics Plan \n cp=0.001, endgroup=1, MissClassErr~27%")
+# dev.off()
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/16_tree_hep_cp001_buk1.pdf")
+# prp(rp.treehep, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="Variables proposed for Health Economics Plan \n cp=0.001, endgroup=1, MissClassErr~27%")
+# dev.off()
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/17_tree_hep_cp001_buk4.pdf")
+# rp.treehepb <- rpart(treehep$MRD~., method="class", data=treehep, control=rpart.control(minbucket=4, xval=10, cp=0.001))
+# prp(rp.treehepb, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="Variables proposed for Health Economics Plan \n cp=0.001, endgroup=4, MissClassErr~31%")
+# dev.off()
+# ```
+# Only genetic data
+# =================
+# ```{r}
+# treegenetic <- genclinv2[c(9, 11:49)]
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/18_MissClassErr_genetics.pdf")
+# 
+# par(mfrow=c(1, 1))
+# for (cp in c(0.01, 0.009, 0.008, 0.007, 0.006, 0.004, 0.002, 0.001)){
+#   nobuckets <- NULL
+#   MissClassErr <- NULL
+#   CorrectClass <- NULL
+#   rootnoderr <- NULL
+#   relErr <- NULL
+#   print(cp)
+#   for (i in 1:15) {
+#     # built the tree
+#     rp.treegenetic <- rpart(treegenetic$MRD~., method="class", data=treegenetic, control=rpart.control(minbucket=i, xval=10, cp=cp))
+#     # get the number of buckets
+#     nobuckets[i] <- i
+#     # get the root node error
+#     rootnoderr[i] <- rp.treegenetic$parms$prior[2]
+#     # Get the rel error for each tree
+#     rpsum <-printcp(rp.treegenetic)
+#     relErr[i] <-last(rpsum)
+#     # Calculate missclassification error
+#     MissClassErr[i] <-rootnoderr[i]*relErr[i]
+#     # Calculate correctly classified patients
+#     CorrectClass[i] <- 209 - MissClassErr[i]*209
+#     }
+# if (cp==0.01){
+# plot(nobuckets, MissClassErr, pch=0, type="o", ylim=c(0, 0.4), main="Only our genetic findings", xlab="No. of patients in end group\n(more patients=less complex model)", ylab="Missclassification error=fraction of patients that will be put in wrong group")
+# legend(12, 0.25, c("0.01", "0.009", "0.008", "0.007", "0.006", "0.004", "0.002", "0.001"), cex=0.8, col=c("black", "green", "darkslategray4", "darkgoldenrod", "blue", "orange", "purple", "red"), pch=0:7, title="complexity \n low-> more complex")
+# }
+# if (cp==0.009){
+# lines(MissClassErr, type="o", pch=1, col="green")
+# }
+# if (cp==0.008){
+# lines(MissClassErr, type="o", pch=2, col="darkslategray4")
+# }
+# if (cp==0.007){
+# lines(MissClassErr, type="o", pch=3, col="darkgoldenrod")
+# }
+# if (cp==0.006){
+# lines(MissClassErr, type="o", pch=4, col="blue")
+# }
+# if (cp==0.004){
+# lines(MissClassErr, type="o", pch=5, col="orange")
+# }  
+# if (cp==0.002){
+# lines(MissClassErr, type="o", pch=6, col="purple")
+# }
+# if (cp==0.001){
+# lines(MissClassErr, type="o", pch=7, col="red")
+# }
+# }
+# dev.off()
+# 
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/19_tree_genetic_cp001_buk1.pdf")
+# #plot best tree with these variables
+# rp.treegenetic <- rpart(treegenetic$MRD~., method="class", data=treegenetic, control=rpart.control(minbucket=1, xval=10, cp=0.001))
+# prp(rp.treegenetic, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="Only our genetic findings \n cp=0.001, endgroup=1, MissClassErr~11%")
+# dev.off()
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/20_tree_genetic_cp001_buk3.pdf")
+# rp.treegeneticb <- rpart(treegenetic$MRD~., method="class", data=treegenetic, control=rpart.control(minbucket=3, xval=10, cp=0.001))
+# prp(rp.treegeneticb, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="Only our genetic findings \n cp=0.001, endgroup=5, MissClassErr~22%")
+# dev.off()
+# 
+# pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_29052014/21_tree_genetic_cp001_buk8.pdf")
+# rp.treegeneticc <- rpart(treegenetic$MRD~., method="class", data=treegenetic, control=rpart.control(minbucket=3, xval=10, cp=0.001))
+# prp(rp.treegeneticc, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="Only our genetic findings \n cp=0.001, endgroup=8, MissClassErr~25%")
+# dev.off()
+

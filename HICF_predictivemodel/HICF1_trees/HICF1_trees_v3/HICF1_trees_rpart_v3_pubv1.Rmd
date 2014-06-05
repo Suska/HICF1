@@ -1,0 +1,382 @@
+HICF1 - factor modelling - TREES_V3 - for publication V1
+========================================================
+Dr. Susanne Weller 
+04/06/2014
+    
+```{r}
+pdf("/home/suska/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_v3_pubv1/01_objectives_treegenetic.pdf")
+textplot("(1) Present all relevant genetic data in an association chart\n (-> will be done once we decide which are the important ones)\n\n
+(2)Built a tree model with only genetic data\n
+- 2a) assess Missclassification error\n
+- 2b) assess quality (variance) via bootstrapping\n
+- 2c) built a couple of trees\n\n
+(3) Built a tree with only clinical data\n
+- 3a) assess Missclassification error\n
+- 3b) assess quality (variance) via bootstrapping\n
+- 3c) built a couple of trees\n\n
+(4) Built a tree with clinical data and genetic data\n
+- 4a) built model\n\n
+- 4b) assess quality via bootstrapping\n\n
+(5) Final comparison\n\n
+- How much did we improve forecasting of MRD+/- with genetics?\n
+- How well do both models perform seperately?\n
+- Are there certain subgroups of patients that benefit particularly from genetic testing?", family="Helvetica", halign = "left")
+title(main="Dr. Susanne Weller, 05/06/2014\nHICF1_Objectives for publication:", family="Helvetica")
+dev.off()
+
+#Import merged dataframe - v3
+setwd("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3")
+load("genclinv3.Rda")
+library(plyr)
+#reorder collumns for convenience
+genclinv3<-genclinv3[c(1, 4, 8, 2, 6, 5, 50, 3, 7, 9:11, 13, 15:50, 53:57 )]
+genclinv3$X11q_monoallelic_mut <- NULL
+genclinv3$Binet.x.1 <- NULL
+genclinv3 <-rename(genclinv3, c("X11q_monoallelic_del.y"="X11q_mono_del", "X11q_biallelic.y"="X11q_biallelic"))
+names(genclinv3)[7]<- "Binet"
+                                
+#convert integers to factors
+genclinv3$vhmut <- as.factor(genclinv3$vhmut)
+levels(genclinv3$MRD) <- c("-MRD", "+MRD")
+genclinv3$cd38 <- as.factor(genclinv3$cd38)
+genclinv3[,13:47] <- lapply(genclinv3[,13:47], as.factor)
+
+#combine genetic factors
+genclinv3$SAMHD1 <- factor(ifelse(genclinv3$SAMHD1_1mutationONLY == "1"|genclinv3$SAMHD1_biallelic_all =="1", "1", "0"))
+genclinv3$TP53 <- factor(ifelse(genclinv3$TP53_mutationONLY == "1"|genclinv3$TP53biallelic =="1", "1", "0"))
+genclinv3 <- genclinv3[c(1:47, 53:54, 48:52)]
+
+library(rpart)
+library(rpart.plot)
+source("lastfunction.R")
+```
+
+(1) Present all relevant genetic data in association chart
+==========================================================
+
+(2) Built a tree with only genetic data (from sequencing)
+
+```{r}
+treegenetic <- genclinv3[c(9, 11:49)]
+library(gplots)
+variablesgenetic <- as.data.frame(colnames(treegenetic))
+
+pdf("/home/suska/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_v3_pubv1/02_text_treegenetic.pdf")
+textplot(variablesgenetic, show.rownames = FALSE, show.colnames = FALSE, family="Helvetica", halign = "left", hadj=0)
+title(main="(2) Built a tree with only our genetic data", family="Helvetica")
+dev.off()
+#2a) Missclassification Error for genetic data:
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v2/figures_trees_v3_pubv1/02a_MissClassErr_genetic.pdf")
+par(mfrow=c(1, 1))
+for (cp in c(0.01, 0.009, 0.008, 0.007, 0.006, 0.004, 0.002, 0.001)){
+  nobuckets <- NULL
+  MissClassErr <- NULL
+  CorrectClass <- NULL
+  rootnoderr <- NULL
+  relErr <- NULL
+  print(cp)
+  for (i in 1:15) {
+    # built the tree
+    rp.treegenetic <- rpart(treegenetic$MRD~., method="class", data=treegenetic, control=rpart.control(minbucket=i, xval=10, cp=cp))
+    # get the number of buckets
+    nobuckets[i] <- i
+    # get the root node error
+    rootnoderr[i] <- rp.treegenetic$parms$prior[2]
+    # Get the rel error for each tree
+    rpsum <-printcp(rp.treegenetic)
+    relErr[i] <-last(rpsum)
+    # Calculate missclassification error
+    MissClassErr[i] <-rootnoderr[i]*relErr[i]
+    # Calculate correctly classified patients
+    CorrectClass[i] <- 209 - MissClassErr[i]*209
+    }
+if (cp==0.01){
+plot(nobuckets, MissClassErr, pch=0, type="o", ylim=c(0, 0.4), main="Only our genetic findings", xlab="No. of patients in end group\n(more patients=less complex model)", ylab="Missclassification error=fraction of patients that will be put in wrong group")
+legend(12, 0.25, c("0.01", "0.009", "0.008", "0.007", "0.006", "0.004", "0.002", "0.001"), cex=0.8, col=c("black", "green", "darkslategray4", "darkgoldenrod", "blue", "orange", "purple", "red"), pch=0:7, title="complexity \n low-> more complex")
+}
+if (cp==0.009){
+lines(MissClassErr, type="o", pch=1, col="green")
+}
+if (cp==0.008){
+lines(MissClassErr, type="o", pch=2, col="darkslategray4")
+}
+if (cp==0.007){
+lines(MissClassErr, type="o", pch=3, col="darkgoldenrod")
+}
+if (cp==0.006){
+lines(MissClassErr, type="o", pch=4, col="blue")
+}
+if (cp==0.004){
+lines(MissClassErr, type="o", pch=5, col="orange")
+}  
+if (cp==0.002){
+lines(MissClassErr, type="o", pch=6, col="purple")
+}
+if (cp==0.001){
+lines(MissClassErr, type="o", pch=7, col="red")
+}
+}
+dev.off()
+
+#2c) Trees for genetic data
+pdf("/home/suska/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_v3_pubv1/02c_trees_genetic.pdf")
+#plot best tree with these variables
+rp.treegenetic1 <- rpart(treegenetic$MRD~., method="class", data=treegenetic, control=rpart.control(minbucket=1, xval=10, cp=0.001))
+#Tree1
+prp(rp.treegenetic1, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="2c) tree1: Only our genetic findings \n cp=0.001, endgroup=1, MissClassErr~11%", sub="This is the best tree with only genetics, but highly specific to our data!")
+
+#Tree2
+rp.treegenetic2 <- rpart(treegenetic$MRD~., method="class", data=treegenetic, control=rpart.control(minbucket=8, xval=10, cp=0.01))
+prp(rp.treegenetic2, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="2c) tree2:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="This is a fairly general reasonable tree, \n parameters deducted from where all error curves coerce into one point. \n Please check if it makes sense in a clinical setting")
+
+
+rp.treegenetic3 <- rpart(treegenetic$MRD~., method="class", data=treegenetic, control=rpart.control(minbucket=8, xval=10, cp=0.01))
+
+textplot("This gives an overview about tree aesthetics: \n \nThere are around 100 more options to costumise the tree, \njust give me any ideas you have, and I'll implement them!", family="Helvetica", halign = "left", hadj=0)
+#Tree3
+prp(rp.treegenetic3, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="2c) tree3: Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, total patient numbers displayed")
+#Tree4
+prp(rp.treegenetic3, extra=8, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="2c) tree4:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, group correct classification rate displayed")
+#Tree5
+prp(rp.treegenetic3, extra=8, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="2c) tree5:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, group correct classification rate displayed")
+#Tree6
+prp(rp.treegenetic3, extra=8, uniform=FALSE, branch=1, left=FALSE, varlen=0, main="2c) tree6:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="Branch length proportional to fit of model, group correct classification rate displayed")
+#Tree7
+prp(rp.treegenetic3, extra=8, uniform=FALSE, branch=1, left=FALSE, varlen=0, main="2c) tree7:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="Branch length proportional to fit of model, group correct classification rate displayed")
+#Tree8
+prp(rp.treegenetic3, extra=2, uniform=TRUE, branch=1, varlen=0, main="2c) tree8:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, total patient numbers displayed, individual node labelled (type1)", type=1)
+#Tree9
+prp(rp.treegenetic3, extra=2, uniform=TRUE, branch=1, varlen=0, main="2c) tree9:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, total patient numbers displayed, nodes labelled above split (type2)", type=2)
+#Tree10
+prp(rp.treegenetic3, extra=2, uniform=TRUE, branch=1, varlen=0, main="2c) tree10:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, total patient numbers displayed, nodes and branches labelled (type4)", type=4)
+#Tree11
+prp(rp.treegenetic3, extra=3, uniform=TRUE, branch=1, varlen=0, main="2c) tree11:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, missclassified patients displayed (extra=3)")
+#Tree12
+prp(rp.treegenetic3, extra=102, left=FALSE, uniform=TRUE, branch=1, varlen=0, main="2c) tree12:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, \ncorrectly classified patients & total percentage in dataset displayed (extra=102)")
+#Tree13
+prp(rp.treegenetic3, extra=102, left=FALSE, uniform=TRUE, branch=1, varlen=0, main="2c) tree13:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, \ncorrectly classified patients & total percentage in dataset displayed (extra=102)")
+#Tree14
+prp(rp.treegenetic3, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="2c) tree14:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, total patient numbers displayed")
+#Tree15
+prp(rp.treegenetic3, extra=2, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="2c) tree15:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, total patient numbers displayed, 'fallen leaves'", fallen.leaves=TRUE)
+#Tree16
+prp(rp.treegenetic3, extra=2, uniform=TRUE, branch=0, left=FALSE, varlen=0, main="2c) tree16:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, total patient numbers displayed, 'branch=0'")
+#Tree17
+prp(rp.treegenetic3, extra=2, uniform=TRUE, branch=0.8, left=FALSE, varlen=0, main="2c) tree17:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, total patient numbers displayed, 'branch=0.8'")
+#Tree18
+prp(rp.treegenetic3, extra=2, uniform=TRUE, branch=0, left=FALSE, varlen=0, main="2c) tree18:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, total patient numbers displayed, 'xflip=TRUE'", xflip=TRUE)
+#Tree19
+prp(rp.treegenetic3, extra=2, uniform=TRUE, branch=0, left=FALSE, varlen=0, main="2c) tree19:Only our genetic findings \n cp=0.01, endgroup=8, MissClassErr~27%", sub="All branches same length, total patient numbers displayed, 'yflip=TRUE'", yflip=TRUE)
+dev.off()
+```
+
+(3) Built a tree with only clinical data
+========================================
+```{r}
+treeclinical <- genclinv3[c(6:10, 50:52, 54)]
+variablesclinical <- as.data.frame(colnames(treeclinical))
+
+pdf("/home/suska/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_v3_pubv1/03_text_tree_clinical.pdf")
+textplot(variablesclinical, show.rownames = FALSE, show.colnames = FALSE, family="Helvetica", halign = "left", hadj=0)
+title(main="(3) Built a tree with commonly used clinical data", family="Helvetica", sub="Age and Neutrophils left out")
+dev.off()
+
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_v3_pubv1/03_MissCLassErr_treeclinical.pdf")
+par(mfrow=c(1, 1))
+for (cp in c(0.01, 0.009, 0.008, 0.006, 0.004, 0.002, 0.001)){
+  source("lastfunction.R")
+  nobuckets <- NULL
+  MissClassErr <- NULL
+  CorrectClass <- NULL
+  rootnoderr <- NULL
+  relErr <- NULL
+  for (i in 1:15) {
+    # built the tree
+    rp.treeclinical <- rpart(treeclinical$MRD~., method="class", data=treeclinical, control=rpart.control(minbucket=i, xval=10, cp=cp))
+    # get the number of buckets
+    nobuckets[i] <- i
+    # get the root node error
+    rootnoderr[i] <- rp.treeclinical$parms$prior[2]
+    # Get the rel error for each tree
+    rpsum <-printcp(rp.treeclinical)
+    relErr[i] <-last(rpsum)
+    # Calculate missclassification error
+    MissClassErr[i] <-rootnoderr[i]*relErr[i]
+    # Calculate correctly classified patients
+    CorrectClass[i] <- 209 - MissClassErr[i]*209
+    }
+MissClassErr
+if (cp==0.01){
+plot(nobuckets, MissClassErr, pch=0, type="o", ylim=c(0, 0.4), main="Only clinical data", xlab="No. of patients in end group\n(more patients=less complex model)", ylab="Missclassification error=fraction of patients that will be put in wrong group ")
+legend(12, 0.2, c("0.01", "0.009", "0.008", "0.006", "0.004", "0.002", "0.001"), cex=0.8, col=c("black","green", "blue", "orange", "purple", "darkslategray4", "red"), pch=0:6, title="complexity:\n lower = more complex")
+}
+if (cp==0.009){
+lines(x=nobuckets+0.05, MissClassErr, type="o", pch=1, col="green")
+}
+if (cp==0.008){
+lines(x=nobuckets+0.1, MissClassErr, type="o", pch=2, col="blue")
+}
+if (cp==0.006){
+lines(x=nobuckets+0.15, MissClassErr, type="o", pch=3, col="orange")
+}  
+if (cp==0.004){
+lines(x=nobuckets+0.20, MissClassErr, type="o", pch=4, col="purple")
+}
+if (cp==0.002){
+lines(x=nobuckets+0.25, MissClassErr, type="o", pch=5, col="darkslategray4")
+}
+if (cp==0.001){
+lines(x=nobuckets+0.30,MissClassErr, type="o", pch=6, col="red")
+}
+}
+dev.off()
+
+#Evaluate tree with cp=0.01, buk=8
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_v3_pubv1/03c_trees_clinical.pdf")
+#Tree20
+rp.treeclinical1 <- rpart(treeclinical$MRD~., method="class", data=treeclinical, control=rpart.control(minbucket=8, xval=10, cp=0.01))
+prp(rp.treeclinical1, extra=102, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="3c) tree20: All clinical data \n cp=0.01, endgroup=8, MissClassErr=23.4%", sub="This tree has quite a good Missclassification error, but does not make much sense clinically?\n Note:vhmut=1 -> 98-100% mutated (which is good?")
+source("MissClassErr.R")
+MissClassErr(treeclinical, 8, 0.01)
+
+#Evaluate tree with cp=0.01, buk=6
+#Tree21
+rp.treeclinical2 <- rpart(treeclinical$MRD~., method="class", data=treeclinical, control=rpart.control(minbucket=6, xval=10, cp=0.01))
+MissClassErr(treeclinical, 6, 0.01)
+prp(rp.treeclinical2, extra=102, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="3c) tree21:All clinical data \n cp=0.01, endgroup=6, MissClassErr=21%", sub="This tree has quite a good Missclassification error, but is quite complicated.\n One idea would be to use either Lymphos OR WBC and platelets OR haem\n(See next trees)")
+
+plot(treeclinical$WBC, treeclinical$ALC_Lympho)
+title("WBC and Lymphos are highly correlated")
+
+#Tree22 (using only WBC)
+rp.treeclinical3 <- rpart(treeclinical$MRD~., method="class", data=treeclinical[c(1:8)], control=rpart.control(minbucket=8, xval=10, cp=0.01))
+MissClassErr(treeclinical[c(1:8)], 8, 0.01)
+prp(rp.treeclinical3, extra=102, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="3c) tree22:All clinical data, using only WBC \n cp=0.01, endgroup=8, MissClassErr=23.9%")
+
+#Tree23 (using only Lymphos)
+rp.treeclinical4 <- rpart(treeclinical$MRD~., method="class", data=treeclinical[c(1:7, 9)], control=rpart.control(minbucket=8, xval=10, cp=0.01))
+MissClassErr(treeclinical[c(1:7, 9)], 8, 0.01)
+prp(rp.treeclinical4, extra=102, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="3c) tree23:All clinical data, using only Lymphos \n cp=0.01, endgroup=8, MissClassErr=24.4%")
+
+#Tree24
+rp.treeclinical5 <- rpart(treeclinical$MRD~., method="class", data=treeclinical[c(1:7,9)], control=rpart.control(minbucket=8, xval=10, cp=0.03))
+MissClassErr(treeclinical[c(1:7, 9)], 8, 0.03)
+prp(rp.treeclinical5, extra=102, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="3c) tree24:All clinical data, using only Lymphos\n cp=0.03, endgroup=8, MissClassErr=32%", sub="Trying to make the tree less complex results in increase in missclassification.\nNote that platelets and haem are not important anymore.")
+
+#Tree25 (using only Lymphos and only plat)
+rp.treeclinical6 <- rpart(treeclinical$MRD~., method="class", data=treeclinical[c(1:5,7,9)], control=rpart.control(minbucket=8, xval=10, cp=0.01))
+MissClassErr(treeclinical[c(1:5, 7, 9)], 8, 0.01)
+prp(rp.treeclinical6, extra=102, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="3c) tree25:All clinical data, using only Lymphos and only plat \n cp=0.01, endgroup=8, MissClassErr=26.3%", sub="Note that platelets don't seem to be important anymore once you take out haem.")
+
+#Tree26 (using only Lymphos and only haem)
+rp.treeclinical7 <- rpart(treeclinical$MRD~., method="class", data=treeclinical[c(1:6,9)], control=rpart.control(minbucket=8, xval=10, cp=0.01))
+MissClassErr(treeclinical[c(1:6,9)], 8, 0.01)
+prp(rp.treeclinical7, extra=102, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="3c) tree27:All clinical data, using only Lymphos and only haem \n cp=0.01, endgroup=8, MissClassErr=25.4%", sub="Note that haem doesn't seem to be important anymore once you take out platelets.")
+
+#Tree27
+rp.treeclinical8 <- rpart(treeclinical$MRD~., method="class", data=treeclinical[c(1:5,7,9)], control=rpart.control(minbucket=8, xval=10, cp=0.03))
+MissClassErr(treeclinical[c(1:5, 7, 9)], 8, 0.03)
+prp(rp.treeclinical8, extra=102, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="3c) tree26:All clinical data, using only Lymphos and only plat \n cp=0.03, endgroup=8, MissClassErr=32%", sub="Trying to make the tree less complex results in increase in missclassification.\nNote that platelets don't seem to be important anymore once you take out haem.")
+
+textplot("Question1:\nIs there a way to group full blood count data?\nAre there any common standards that are used for deciding if a blood count is abnormal?\nI attach an overview of how the data is distributed.", family="Helvetica", halign = "left")
+
+hist(genclinv3$ALC_Lympho, breaks=20)
+abline(v=20,col=4,lty=1)
+abline(v=148,col=3,lty=1)
+abline(v=106,col=3,lty=1)
+hist(genclinv3$plat, breaks=30)
+hist(genclinv3$haem, breaks=30)
+dev.off()
+
+#CONCLUSION CLINICAL DATA
+#pdf("/home/suska/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_v3_pubv1/02_text_treegenetics.pdf")
+#textplot(variablesclinical, show.rownames = FALSE, show.colnames = FALSE, family="Helvetica", halign = "left", hadj=0)
+#title(main="(3) Built a tree with commonly used clinical data", family="Helvetica")
+#dev.off()
+
+#Glue the report together (as of 04062014)
+#source("Disclaimer.R")
+#setwd("/home/suska/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_v3_pubv1")
+system(pdftk 01_objectives_treegenetics.pdf 02_text_treegenetics.pdf 02a_MissClassErr_genetics.pdf 02c_trees_genetic.pdf 03_text_tree_clinical.pdf 03_MissCLassErr_treeclinical.pdf 03c_trees_clinical.pdf cat output HICF1_trees_SW_04062014.pdf)
+
+```
+(4) Built a tree with clinical data and genetic data
+====================================================
+```{r}
+treegenclin1 <- genclinv3[c(6:51, 54)]
+variablesgenclin1 <- as.data.frame(colnames(treegenclin1))
+
+pdf("/home/suska/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_v3_pubv1/04_text_treegenclin.pdf")
+textplot(variablesgenclin1, show.rownames = FALSE, show.colnames = FALSE, family="Helvetica", halign = "left", hadj=0)
+title(main="(4) Built a tree with clinical and genetic data (treegenclin1)", family="Helvetica", sub="Age, Neutrophils and WBC left out")
+dev.off()
+
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_v3_pubv1/04_MissCLassErr_treegenclin1.pdf")
+par(mfrow=c(1, 1))
+for (cp in c(0.01, 0.009, 0.008, 0.006, 0.004, 0.002, 0.001)){
+  source("lastfunction.R")
+  nobuckets <- NULL
+  MissClassErr <- NULL
+  CorrectClass <- NULL
+  rootnoderr <- NULL
+  relErr <- NULL
+  for (i in 1:15) {
+    # built the tree
+    rp.treegenclin1 <- rpart(treegenclin1$MRD~., method="class", data=treegenclin1, control=rpart.control(minbucket=i, xval=10, cp=cp))
+    # get the number of buckets
+    nobuckets[i] <- i
+    # get the root node error
+    rootnoderr[i] <- rp.treegenclin1$parms$prior[2]
+    # Get the rel error for each tree
+    rpsum <-printcp(rp.treegenclin1)
+    relErr[i] <-last(rpsum)
+    # Calculate missclassification error
+    MissClassErr[i] <-rootnoderr[i]*relErr[i]
+    # Calculate correctly classified patients
+    CorrectClass[i] <- 209 - MissClassErr[i]*209
+    }
+MissClassErr
+if (cp==0.01){
+plot(nobuckets, MissClassErr, pch=0, type="o", ylim=c(0, 0.4), main="All data without age, WBC and Neutrophils (treegenclin1)", xlab="No. of patients in end group\n(more patients=less complex model)", ylab="Missclassification error=fraction of patients that will be put in wrong group ")
+legend(12, 0.2, c("0.01", "0.009", "0.008", "0.006", "0.004", "0.002", "0.001"), cex=0.8, col=c("black","green", "blue", "orange", "purple", "darkslategray4", "red"), pch=0:6, title="complexity:\n lower = more complex")
+}
+if (cp==0.009){
+lines(x=nobuckets+0.05, MissClassErr, type="o", pch=1, col="green")
+}
+if (cp==0.008){
+lines(x=nobuckets+0.1, MissClassErr, type="o", pch=2, col="blue")
+}
+if (cp==0.006){
+lines(x=nobuckets+0.15, MissClassErr, type="o", pch=3, col="orange")
+}  
+if (cp==0.004){
+lines(x=nobuckets+0.20, MissClassErr, type="o", pch=4, col="purple")
+}
+if (cp==0.002){
+lines(x=nobuckets+0.25, MissClassErr, type="o", pch=5, col="darkslategray4")
+}
+if (cp==0.001){
+lines(x=nobuckets+0.30,MissClassErr, type="o", pch=6, col="red")
+}
+}
+dev.off()
+
+#Evaluate tree with cp=0.01, buk=8 (same as good tree for clinical data)
+pdf("~/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_v3_pubv1/04c_tree_genclin.pdf")
+rp.treegenclin1 <- rpart(treegenclin1$MRD~., method="class", data=treegenclin1, control=rpart.control(minbucket=8, xval=10, cp=0.01))
+prp(rp.treegenclin1, extra=102, uniform=TRUE, branch=1, left=FALSE, varlen=0, main="4c) tree 28:All data (treegenclin1) \n cp=0.01, endgroup=8, MissClassErr=20%")
+source("MissClassErr.R")
+MissClassErr(treegenclin1, 8, 0.01)
+```
+5) Conclusion
+```{r}
+textplot("How much did we improve forecasting of MRD+/- with genetics?\n
+How well do both models perform seperately?\n
+Are there certain subgroups of patients that benefit particularly from genetic testing?", family="Helvetica", halign = "left")
+title(main="5)Comparison", family="Helvetica")
+```
+Glue the report together
+```{r}
+#source("Disclaimer.R")
+#setwd("/home/suska/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_trees/HICF1_trees_v3/figures_trees_v3_pubv1")
+system(pdftk 01_objectives_treegenetics.pdf 02_text_treegenetics.pdf 02a_MissClassErr_genetics.pdf 02c_trees_genetic.pdf 03_text_tree_clinical.pdf 03_MissCLassErr_treeclinical.pdf 03c_trees_clinical.pdf cat output HICF1_trees_SW_04062014.pdf)
