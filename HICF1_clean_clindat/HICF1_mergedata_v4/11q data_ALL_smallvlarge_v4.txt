@@ -1,0 +1,210 @@
+ID	v4mono_11q_ATM_mut	v4mono11q_BIRC3_mut	v4small_mono11q_del 	v4small_bi11q	v4large_mono11q_del	v4large_bi11q	mrd_assessment	final_response_assessment
+ADM003 	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM004	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM005 	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM006 	0	0	0	0	0	0	MRD negative	Partial Remission (PR)
+ADM007	1	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM009 	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM010 	0	0	0	0	1	0	MRD positive	Complete Remission with incomplete marro
+ADM011 	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM012 	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM013 	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM014 	0	0	0	0	1	0	MRD positive	Partial Remission (PR)
+ADM015 	0	0	1	0	0	0	MRD positive	Partial Remission (PR)
+ADM027	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM028	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM029	0	0	0	0	0	1	MRD positive	Complete Remission (CR)
+ADM030	0	0	0	0	0	0	MRD positive	Complete Remission with incomplete marro
+ADM032	0	0	0	0	0	0	MRD negative	CR/Cri
+ADM034	0	0	0	0	1	0	MRD negative	CR/Cri
+ADM041 	1	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM045	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM058	0	0	0	0	1	0	MRD positive	Partial Remission (PR)
+ADM059 	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM068	0	1	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM070	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM078 	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM080	1	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM081 	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM096	0	0	0	0	0	0	MRD positive	Complete Remission with incomplete marro
+ADM106	1	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM107	0	0	0	0	0	1	MRD negative	Complete Remission with incomplete marro
+ADM111	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM113	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM117	0	0	0	0	0	1	MRD positive	Partial Remission (PR)
+ADM119	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM127	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM129	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM131	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM140 	0	0	0	0	0	0	MRD negative	Partial Remission (PR)
+ADM148 	0	0	0	0	0	0	MRD positive	Complete Remission with incomplete marro
+ADM155	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM162	0	0	0	0	0	0	MRD negative	Unable to assess
+ADM169	0	0	0	0	0	1	MRD negative	Partial Remission (PR)
+ADM181	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM182	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM201	0	0	0	0	0	1	MRD positive	Unable to assess
+ADM204	0	0	0	0	0	0	MRD positive	Complete Remission with incomplete marro
+ADM207	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM208	1	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM210	1	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM211	0	0	0	0	0	0	MRD negative	CR/Cri
+ADM215  	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM217  	1	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM219  	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM223	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM224  	0	0	0	0	1	0	MRD positive	Partial Remission (PR)
+ADM226	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM228  	0	0	0	0	1	0	MRD positive	Stable Disease (SD)
+ADM229  	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM238  	0	0	0	0	0	0	MRD negative	CR/Cri
+ADM242  	0	0	0	0	0	1	MRD negative	Complete Remission (CR)
+ADM249  	0	0	0	0	0	0	MRD positive	Progressive Disease (PD)
+ADM257  	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM259  	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM269  	0	0	0	0	1	0	MRD negative	Complete Remission (CR)
+ADM279  	0	1	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM283  	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM284  	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM287  	0	0	0	0	0	1	MRD positive	Complete Remission (CR)
+ADM288  	0	0	0	0	0	0	MRD negative	CR/Cri
+ADM293  	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM295  	0	0	0	0	0	1	MRD positive	Complete Remission (CR)
+ADM296  	0	0	0	0	0	0	MRD negative	CR/Cri
+ADM318 	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM320  	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM324  	1	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM326  	1	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM332  	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM333  	0	0	0	0	0	1	MRD positive	Complete Remission (CR)
+ADM335  	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM337  	1	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM338  	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM339 	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM340  	1	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM354  	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM364  	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM366  	1	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM373  	0	0	0	0	0	1	MRD positive	Complete Remission with incomplete marro
+ADM384  	0	0	0	0	0	0	MRD positive	Complete Remission with incomplete marro
+ADM391 	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM398  	0	0	0	0	1	0	MRD positive	Partial Remission (PR)
+ADM399  	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM401  	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM404  	0	0	0	0	0	0	MRD negative	CR/Cri
+ADM407  	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM411  	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM426  	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM427  	0	0	0	0	0	1	MRD negative	Complete Remission with incomplete marro
+ADM438  	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM441  	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM446  	1	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ADM455  	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ADM456  	0	0	0	0	0	1	MRD positive	Partial Remission (PR)
+ADM466  	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ADM477  	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ADM480  	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC017	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC019	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC026	0	0	0	0	0	1	MRD positive	Partial Remission (PR)
+ARC031	0	0	0	0	0	1	MRD negative	Complete Remission (CR)
+ARC033	0	0	1	0	0	0	MRD negative	Complete Remission (CR)
+ARC037	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC038	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC039	0	0	0	0	0	0	MRD positive	Progressive Disease (PD)
+ARC040	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC043	0	0	0	1	0	0	MRD negative	Partial Remission (PR)
+ARC047	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC052	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC053	1	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ARC071	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC077	0	0	0	0	0	1	MRD positive	Complete Remission (CR)
+ARC079	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC082	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC085	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC087	0	0	0	0	0	0	MRD positive	Stable Disease (SD)
+ARC091	1	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ARC093	0	0	0	0	0	0	MRD positive	Complete Remission with incomplete marro
+ARC104	1	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC109	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC120	0	0	0	0	1	0	MRD positive	Complete Remission with incomplete marro
+ARC121	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC122	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC134	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC137	1	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC138	0	0	0	1	0	0	MRD negative	Complete Remission (CR)
+ARC143	0	0	0	0	0	1	MRD positive	Complete Remission with incomplete marro
+ARC144	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC149	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC150	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC154	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC157	0	0	0	0	0	0	MRD positive	Complete Remission with incomplete marro
+ARC160	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC166	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC172	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC175	1	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC176	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC178	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC179	1	0	0	0	0	0	MRD negative	Partial Remission (PR)
+ARC180	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC185	0	0	0	0	0	1	MRD negative	Complete Remission (CR)
+ARC186	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC203	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC205	0	0	0	0	0	0	MRD positive	Complete Remission with incomplete marro
+ARC206	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC221	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC230	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC234	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC240	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC241	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ARC244	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC245	1	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC250	1	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC251	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC252	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC254	0	0	0	0	0	1	MRD positive	Partial Remission (PR)
+ARC256	1	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC274	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC280	0	0	0	0	0	0	MRD positive	Stable Disease (SD)
+ARC282	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC286	1	0	0	0	0	0	MRD positive	Complete Remission with incomplete marro
+ARC291	0	0	0	1	0	0	MRD negative	Complete Remission (CR)
+ARC297	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC299	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC301	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC304	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC305	0	0	0	0	0	1	MRD positive	Complete Remission (CR)
+ARC310	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC313	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC393	0	0	0	0	0	1	MRD positive	Complete Remission (CR)
+ARC484	0	0	1	0	0	0	MRD positive	Progressive Disease (PD)
+ARC490	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC502	0	1	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC528	1	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ARC574	0	0	0	1	0	0	MRD positive	Partial Remission (PR)
+ARC576	0	0	0	0	1	0	MRD positive	Partial Remission (PR)
+ARC579	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC582	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC592	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC596	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC601	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC609	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC621	0	0	0	0	0	0	MRD positive	Stable Disease (SD)
+ARC627	0	1	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC628	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC631	0	0	0	0	0	1	MRD negative	Complete Remission (CR)
+ARC634	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC639	0	1	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC643	0	1	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC646	0	0	0	0	0	1	MRD positive	Unable to assess
+ARC649	0	0	0	1	0	0	MRD negative	Partial Remission (PR)
+ARC663	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ARC679	0	0	0	1	0	0	MRD positive	Partial Remission (PR)
+ARC682	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC683	0	0	0	0	0	0	MRD positive	Complete Remission (CR)
+ARC689	1	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC697	0	0	0	0	0	0	MRD negative	Complete Remission (CR)
+ARC706	0	0	0	0	0	0	MRD positive	Partial Remission (PR)
+ARC716	0	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC724	1	0	0	0	0	0	MRD negative	Complete Remission with incomplete marro
+ARC745	0	0	1	0	0	0	MRD positive	Complete Remission (CR)
