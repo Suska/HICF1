@@ -1,0 +1,149 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage[margin=1.5cm]{geometry}
+
+\title{HICF1 ATM mutation and VAF}
+\author{Dr. Susanne Weller}
+\date{\today}
+
+\begin{document}
+\maketitle
+\section*{Disclaimer}
+This analysis is still preliminary! Do not use graphs or p-values for presentations, poster or reports!
+\section*{Objectives}
+The purpose of this analysis is to describe how mutations in ATM occur at different Variant Allele Frequencies (VAF). Some patients have more than one mutation, and these mutations differ in their VAF. We want to know if we can see two distinctive groups in VAF in those patients.
+
+\section*{Mutation Distribution}
+<<Get ATM data, echo=FALSE, eval=TRUE>>=
+setwd("/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_descriptive/HICF1_descriptive_v5_ATM")
+atm <- read.table("ATM_all_mutations_VAF.txt", sep="\t", header=TRUE, strip.white = TRUE)
+load("genclinv5.Rda")
+library(plyr)
+library(ggplot2)
+atm <- join(atm, genclinv5, match="all")
+#This gives the number of mutations for each patient
+No_of_mutations <-summary(atm$ID)
+duplicate_atm <- as.data.frame(No_of_mutations)
+duplicate_atm$ID <- row.names(duplicate_atm)
+row.names(duplicate_atm) <- NULL
+atm <- join(atm, duplicate_atm, match="all")
+atm$No_of_mutations <- as.factor(atm$No_of_mutations)
+atm$Binary_No_of_mutation <- as.factor(ifelse(atm$No_of_mutations == "1", "1", "more_than_1"))
+
+#get unique number of mutations for each patient for summary graph:
+duplicate_atm$ID <- as.factor(duplicate_atm$ID)
+duplicate_atm <- join(duplicate_atm, genclinv5)
+duplicate_atm$No_of_mutations <- as.factor(duplicate_atm$No_of_mutations)
+duplicate_atm$Binary_No_of_mutation <- as.factor(ifelse(duplicate_atm$No_of_mutations == "1", "1", "more_than_1"))
+duplicate_atm$mean_vaf <-unlist(tapply(atm$vf, atm$ID, mean))
+@
+This illustrates how many samples have more than one mutation:\\
+<<fig=TRUE, echo=FALSE>>=
+ggplot(duplicate_atm, aes(x=No_of_mutations))+geom_bar(aes(fill=MRD), position="dodge")+scale_fill_manual(values=c("cadetblue", "darkorchid4"), na.value = "grey50")+ggtitle("Distribution of Number of ATM mutations")
+@
+\\I added all patients that have more than one mutation because there are only 2 of them and two groups is usully easier to deal with:\\
+<<fig=TRUE, echo=FALSE>>=
+ggplot(duplicate_atm, aes(x=Binary_No_of_mutation))+geom_bar(aes(fill=MRD), position="dodge")+scale_fill_manual(values=c("blue", "red"), na.value = "grey50")+ggtitle("Distribution of Number of ATM mutations: 1 vs >1")
+@
+\\If you look at it from the perspective of clinical outcome (MRD):\\
+<<fig=TRUE, echo=FALSE>>=
+ggplot(duplicate_atm, aes(x=MRD))+geom_bar(aes(fill=Binary_No_of_mutation), position="dodge")+scale_fill_manual(values=c("cadetblue", "darkorchid4"), na.value = "grey50")+ggtitle("Distribution of Number of ATM mutations\n among MRD+ and MRD- patients")
+@
+\\We can check if the distribution of Number of mutations between MRD positive and negative is different:\\
+<<options,echo=FALSE, eval=TRUE>>=
+Mutationdistribution <- table(duplicate_atm$MRD, duplicate_atm$Binary_No_of_mutation)
+Mutationdistribution
+chisq.test(Mutationdistribution)
+@
+\\Apparently, MRD negative and MRD positive patients do not differ in their distribution of ATM mutation numbers. Next, we look at the the distribution of the actual VAF:\\
+<<echo=FALSE, fig=TRUE>>=
+ggplot(atm, aes(x=vf))+geom_histogram(binwidth=0.08, colour="darkblue", fill="cadetblue", aes(y=..density..))+geom_density(colour="cyan", alpha=.2, fill="aquamarine")+ylab("Occurence frequency")+xlab("Variant Allele Frequency")+xlim(c(0, 1))
+@
+\\Notice how most mutations have a VAF around 0.5, but there are two local maxima closer to both ends of the spectrum. We want to know wheather those correspond to patients that have more than one mutation. Keep in mind that this graph illustrates all VAFs, so 17 patients occure in it more than once!\\
+\section*{Clustering of Variant Allele Frequencies}
+First, we have a look at the VAF distribution of patients with 1,2, 3 or 4 mutations. Again, each mutation is displayed separately, so in the groups with more than 1 mutation, each patient contributes more than one datapoint, corresponding to dots on the graph. This is why we are not doing any statistical tests on these groups, because we are in danger of pseudo-replication!\\
+<<fig=TRUE, echo=FALSE>>=
+ggplot(atm, aes(x=No_of_mutations, y=vf))+
+  geom_violin(stat="ydensity", alpha=0.5, colour="darkgrey")+
+  geom_point(aes(colour=MRD), position=position_jitter(width = .2), size=3)+ scale_colour_manual(values=c("blue", "red"), na.value = "grey50")+ggtitle("VAF for patients with different numbers of mutations")
+@
+\\Surprisingly, there seems to be much clearer clustering in the patients with only one mutation.\\
+NExt, we want to focus on the patients with two mutations and see if there is really a clear separation in the VAFs. To do this, we first select all the patients with two mutations. Then we rank their VAF and assign a lower and a higher VAF. 
+We check if low and high VAF are correlated:\\
+<<Subsetting, echo=FALSE, eval=TRUE>>=
+twomutations <- subset(atm, No_of_mutations=="2")
+twomutations <- twomutations[order(twomutations$ID, twomutations$vf),]
+VAF_rank <- unlist(rep(cbind("lower_vaf", "higher_vaf"), times=17))
+twomutations$VAF_rank <- VAF_rank
+lower_VAF <- subset(twomutations, VAF_rank=="lower_vaf")
+higher_VAF <- subset(twomutations, VAF_rank=="higher_vaf")
+@
+<<fig=TRUE, echo=FALSE>>=
+qplot(x=lower_VAF$vf, y=higher_VAF$vf, colour=lower_VAF$MRD, main=("Correlation between higher and lower VAF\nfor patients with two ATM mutations"))+scale_colour_manual(values=c("blue", "red"), na.value = "grey50")
+@
+<<Correlation, echo=FALSE, eval=TRUE>>=
+cor.test(x=lower_VAF$vf, y=higher_VAF$vf, method="pearson")
+@
+\\We can see that there is a clear correlation between the low and the high VAF of patients with two mutations. In other words, there is not much variation going on WITHIN a patient. Both mutations occur at nearly the same frequencies (except for one outlier). Now we want to see how much variance we find BETWEEN the two mutations.\\
+By connecting each individuals VAFs with a line, we can see the slope that is created by each individual. If the slope is relatively flat, there is no difference between the groups. If we can detect a slope, we can say that the lower and higher vafs generally differ from each other, while correcting for within patient variation. The paired wilcoxon test checks if this slope is different from 0. Addmitetly, this is a bit of an artificial approach because we SORTED the VAFs in the first place.\\
+
+<<fig=TRUE, echo=FALSE>>=
+ggplot(twomutations, aes(x=VAF_rank, y=vf, group=ID))+
+  geom_point(aes(colour=MRD), size=3)+ scale_colour_manual(values=c("blue", "red"), na.value = "grey50")+
+  geom_line(colour="darkgreen")
+@
+<<t-test, echo=FALSE, eval=TRUE>>=
+t.test(lower_VAF$vf, higher_VAF$vf, paired=TRUE)
+@
+\\I removed the outlier here:\\
+<<Exclude_Outlier, echo=FALSE, eval=TRUE>>=
+twomutationsoutlier <- subset(twomutations, ID != "ARC554")
+<<fig=TRUE, echo=FALSE>>=
+ggplot(twomutationsoutlier, aes(x=VAF_rank, y=vf, group=ID))+
+  geom_point(aes(colour=MRD), size=3)+ scale_colour_manual(values=c("blue", "red"), na.value = "grey50")+
+  geom_line(colour="darkgreen")
+@
+<<t-test_outliers, echo=FALSE, eval=TRUE>>=
+lower_VAF_out <- subset(twomutationsoutlier, VAF_rank=="lower_vaf")
+higher_VAF_out <- subset(twomutationsoutlier, VAF_rank=="higher_vaf")
+t.test(lower_VAF_out$vf, higher_VAF_out$vf, paired=TRUE)
+@
+\\We can see that the difference is significant as expected, but it is rather small (-0.06). Both the correlation between low and high VAF and relatively small difference allows us to use the mean(VAF) for each sample for a final comparison.\\
+\section*{Comparison of mean(VAF) in samples with 1 or >1 ATM mutation}
+<<fig=TRUE, echo=FALSE>>=
+ggplot(duplicate_atm, aes(x=duplicate_atm$Binary_No_of_mutation, y=duplicate_atm$mean_vaf))+
+  geom_boxplot()+
+  geom_point(aes(colour=MRD), position=position_jitter(width = .1), size=3)+
+  scale_colour_manual(values=c("blue", "red"), na.value = "grey50")+
+  ggtitle("Mean(VAF) of ATM for patients with 1 or >1 mutations")+
+  xlab("Number of ATM mutations")+
+  ylab("Mean(VAF) of ATM mutations")+
+  annotate("text", x=2, y=0.99, label="Wilcoxon test, p<0.001" )
+@
+<<Wilcoxontest on means, echo=FALSE, eval=FALSE>>=
+wilcox.test(x=duplicate_atm$mean_vaf, g=duplicate_atm$Binary_No_of_mutation)
+@
+\\We use a simple ANOVA-like approach to see if the mean(vaf) is influenced by a combination of "Numer of mutations" and "MRD": Again, we see that only number of mutations has an effect on mean(vaf).\emph{(p adj=0.02)}\\
+<<ANOVA, echo=FALSE, eval=TRUE>>=
+fit <- aov(mean_vaf ~ Binary_No_of_mutation*MRD, data=duplicate_atm)
+TukeyHSD(fit)
+@
+
+\section*{Conclusion}
+The strongest effect is that VAFs of patients with more than one mutations are remarkably similar and do not cluster clearly into two groups. It almost seems as if they co-occur. Are they defined as being in different clones? If so, I strongly suggest to check on this as they may be from the same clone.\\
+We can also conclude that patients with more than one mutation generally have lower VAF.\\
+\\
+\textbf{Possible explanation:}\\
+One reason for this finding could be the following: Two mutations occureing at similar vafs could belong to the same clone. As the event of having two mutation is much rarer than having only one mutation, their vaf is generally lower.\\
+\\
+\textbf{Outlook:}\\
+As the difference is quite clear cut, could that allow us to calculate a mutation rate for ATM mutations?\\
+Can we have a look at vafs of other genes?\\
+We still have the length of our mutations somewhere stored and have not used them for any analysis. We could check if VAFs are related to mutation length.
+\SweaveOpts{concordance=TRUE}
+
+\end{document}

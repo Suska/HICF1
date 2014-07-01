@@ -1,0 +1,70 @@
+HICF1 - descriptive analysis
+============================
+
+This dataset contains clinical and genetic data (targeted sequencing and unsubstracted WGS) from 209 CLL patients. Note that outcome is measured as binary response "MRD", where "positive" is related to poor prognosis.
+
+```{r}
+setwd("/home/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_descriptive/HICF1_descriptive_v3")
+load("genclinv3.Rda")
+library(plyr)
+#reorder collumns for convenience
+genclinv3<-genclinv3[c(1, 4, 8, 2, 6, 5, 50, 3, 7, 9:11, 13, 15:50, 53:57 )]
+genclinv3$X11q_monoallelic_mut <- NULL
+genclinv3$Binet.x.1 <- NULL
+genclinv3 <-rename(genclinv3, c("X11q_monoallelic_del.y"="X11q_mono_del", "X11q_biallelic.y"="X11q_biallelic"))
+names(genclinv3)[7]<- "Binet"
+                                
+#convert integers to factors
+genclinv3$vhmut <- as.factor(genclinv3$vhmut)
+levels(genclinv3$MRD) <- c("-MRD", "+MRD")
+genclinv3$cd38 <- as.factor(genclinv3$cd38)
+genclinv3[,13:47] <- lapply(genclinv3[,13:47], as.factor)
+
+#combine genetic factors
+genclinv3$SAMHD1 <- factor(ifelse(genclinv3$SAMHD1_1mutationONLY == "1"|genclinv3$SAMHD1_biallelic_all =="1", "1", "0"))
+genclinv3$TP53 <- factor(ifelse(genclinv3$TP53_mutationONLY == "1"|genclinv3$TP53biallelic =="1", "1", "0"))
+genclinv3 <- genclinv3[c(1:47, 53:54, 48:52)]
+```
+
+I. Data distribution
+
+```{r}
+library(ggplot2)
+#theme_set("theme_gray")
+#theme_get()
+
+ggplot() +
+geom_point(data = genclinv3, aes(x = MRD, y = aar, colour=gender))
+
+qplot(data=genclinv3, x=genclinv3$MRD, y=genclinv3$clones)
+
+
+ggplot()+ geom_violin(data=genclinv3, aes(x=MRD, y=aar), stat="ydensity") +
+geom_point(data=genclinv3, aes(x=MRD, y=aar, colour=gender, size=-haem, alpha=-WBC), position = position_jitter(width = .2))+
+scale_colour_manual(values=c("darkred", "darkblue"))+
+scale_size_continuous(range=c(3,9), breaks=c(-6, -8, -10, -12, -14, -16))+
+scale_alpha_continuous(range=c(0.1, 1), breaks=c(-100, -200, -200, -400))
+
+ggplot()+geom_violin(data=genclinv3, aes(x=MRD, y=CNAs, stat="ydensity")+
+
+
+
+scale_size_continuous("Magnitude", range = c(2,8), breaks = 4:6)
+  #geom_rug(data=genclinv3, aes(x=MRD, y=aar), col="darkred",alpha=.3)
+geom_violin(data=genclinv3, aes(x=MRD, y=aar), stat="ydensity")
+geom_point(position = position_jitter(width = .1))
+  
+
+scale_colour_continuous("Depth", breaks = seq(0, -600, -100)) +
++
+scale_size_continuous("Magnitude", range = c(2,8), breaks = 4:6)
+dist1 <- ggplot(aes(genclinv3, gender, aar))+geom_point()
+
+> ggplot() +
++ geom_line(data = pkData,
++
+aes(x = Time, y = Conc, group = Subject, linetype = factor(Dose)), # Args are variab
++
+colour = "red")
+```
+

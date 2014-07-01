@@ -1,0 +1,87 @@
+HICF1 - descriptive analysis
+============================
+
+This dataset contains clinical and genetic data (targeted sequencing and unsubstracted WGS) from 209 CLL patients. Note that outcome is measured as binary response "MRD", where "positive" is related to poor prognosis.
+
+```{r}
+setwd("/home/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_descriptive/HICF1_descriptive_v4")
+load("genclinv4.Rda")
+#genclinv4$vhmut <- factor(genclinv4$vhmut, labels=c("mutated", "unmutated"))
+library(plyr)
+```
+
+I. Data distribution
+
+```{r}
+library(ggplot2)
+#theme_set("theme_gray")
+#theme_get()
+
+ggplot() +
+geom_point(data = genclinv4, aes(x = MRD, y = aar, colour=gender))
+
+qplot(data=genclinv3, x=genclinv3$MRD, y=genclinv3$clones)
+
+
+ggplot()+ geom_violin(data=genclinv4, aes(x=MRD, y=aar), stat="ydensity") +
+geom_point(data=genclinv4, aes(x=MRD, y=aar, colour=gender, size=-haem, alpha=WBC), position = position_jitter(width = .2))+
+scale_colour_manual(values=c("darkred", "darkblue"))+
+scale_size_continuous(range=c(3,9), breaks=c(-6, -8, -10, -12, -14, -16))+
+scale_alpha_continuous(range=c(0.3, 1), breaks=c(100, 200, 300, 400))
+
+ggplot()+ geom_violin(data=genclinv4, aes(x=MRD, y=aar), stat="ydensity") +
+geom_point(data=genclinv4, aes(x=MRD, y=aar, colour=gender, size=TP53, alpha=SAMHD1), position = position_jitter(width = .2))+
+scale_colour_manual(values=c("darkred", "darkblue"))+
+scale_size_discrete(range=c(3,6))+
+scale_alpha_discrete(range=c(0.4, 1))
+```
+Association chart with predictors known from literature
+```{r}
+library("gplots")
+knownpredall <- subset(genclinv4, select = c("MRD", "vhmut", "Binet", "trisomy12", "trisomy18", "trisomy19", "TP53", 
+    "SAMHD1", "NOTCH1_mutation", "SF3B1_mutation", "clones", "CNAs"))
+
+knownpredall <- knownpredall[order(knownpredall$MRD, knownpredall$vhmut, knownpredall$Binet, knownpredall$trisomy12, knownpredall$trisomy18, knownpredall$trisomy19, knownpredall$TP53, 
+    knownpredall$SAMHD1, knownpredall$NOTCH1_mutation, knownpredall$SF3B1_mutation, knownpredall$clones, knownpredall$CNAs), ]
+
+knownpredall <- as.data.frame(lapply(knownpredall, as.numeric))
+
+tknownpredall <- t(knownpredall)
+tknownpredheat <- heatmap.2((as.matrix(tknownpredall, row.names.force = TRUE)), 
+    , symm = FALSE, col = bluered(100), scale = "row", key = FALSE, symkey = FALSE, 
+    na.rm = TRUE, trace = "none", cexRow = 0.7, 
+    cexCol = 0.4, Rowv = FALSE, Colv = FALSE, main="Predictors known from literature")
+
+#-------------------------------------------------------------------------------------------
+#Predictors from recursive classification trees v4
+#For vhmut=mutated 
+knownpredallvh0 <- subset(genclinv4, vhmut=="0")
+
+knownpredallvh0 <- subset(knownpredallvh0, select = c("MRD", "v4bi_11q", "CNAs", "Binet", "v4mono_11q_ATM_mut.x", "X13q_hom", "clones", "SAMHD1", "TP53", "NOTCH1_mutation", "SF3B1_mutation", "gender"))
+
+knownpredallvh0 <- knownpredallvh0[order(knownpredallvh0$MRD, knownpredallvh0$v4bi_11q, knownpredallvh0$CNAs, knownpredallvh0$Binet, knownpredallvh0$v4mono_11q_ATM_mut.x, knownpredallvh0$X13q_hom, knownpredallvh0$clones, knownpredallvh0$SAMHD1, knownpredallvh0$TP53, knownpredallvh0$NOTCH1_mutation, knownpredallvh0$SF3B1_mutation, knownpredallvh0$gender), ]
+knownpredallvh0 <- as.data.frame(lapply(knownpredallvh0, as.numeric))
+
+tknownpredallvh0 <- t(knownpredallvh0)
+tknownpredallvh0heat <- heatmap.2((as.matrix(tknownpredallvh0, row.names.force = TRUE)), 
+    , symm = FALSE, col = bluered(100), scale = "row", key = FALSE, symkey = FALSE, 
+    density.info = "histogram", na.rm = TRUE, trace = "none", cexRow = 0.7, 
+    cexCol = 0.4, Rowv = FALSE, Colv = FALSE, na.color = "green", main = "data from recursive\n partitioning trees\n vhmut=mutated", 
+    xlab = "samples", sepwidth=c(0.1,0.1), sepcolor="purple", rowsep=7)
+#-----------------------------------------------------------------------------------------------------------------------------------------
+knownpredallvh1 <- subset(genclinv4, vhmut=="1")
+
+knownpredallvh1 <- subset(knownpredallvh1, select = c("MRD", "TP53", "trisomy12", "X6qMDR3", "XPO1mutationALL", "Binet", "CNAs", "NOTCH1_mutation", "cd38", "clones", "v4mono_11q_ATM_mut.x", "SAMHD1", "SF3B1_mutation", "gender"))
+
+knownpredallvh1 <- knownpredallvh1[order(knownpredallvh1$MRD, knownpredallvh1$TP53, knownpredallvh1$trisomy12, knownpredallvh1$X6qMDR3, knownpredallvh1$XPO1mutationALL, knownpredallvh1$Binet, knownpredallvh1$CNAs, knownpredallvh1$NOTCH1_mutation, knownpredallvh1$cd38, knownpredallvh1$clones, knownpredallvh1$v4mono_11q_ATM_mut.x, knownpredallvh1$SAMHD1, knownpredallvh1$SF3B1_mutation, knownpredallvh1$gender), ]
+knownpredallvh1<- as.data.frame(lapply(knownpredallvh1, as.numeric))
+
+tknownpredallvh1 <- t(knownpredallvh1)
+tknownpredallvh1heat <- heatmap.2((as.matrix(tknownpredallvh1, row.names.force = TRUE)), 
+    , symm = FALSE, col = bluered(100), scale = "row", key = FALSE, symkey = FALSE, 
+    density.info = "histogram", na.rm = TRUE, trace = "none", cexRow = 0.7, 
+    cexCol = 0.4, Rowv = FALSE, Colv = FALSE, na.color = "green", main = "data from recursive\n partitioning trees\n vhmut=unmutated", 
+    xlab = "samples",sepwidth=c(0.1,0.1), sepcolor="purple", rowsep=11)
+
+
+#/home/suska/work/01_HICF1/HICF1_sub1/trunk/HICF_predictivemodel/HICF1_univariates
