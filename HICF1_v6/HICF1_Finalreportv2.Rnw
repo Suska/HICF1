@@ -1,0 +1,533 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage[margin=1.5cm]{geometry}
+\usepackage{lscape}
+
+\title{HICF1 -  Final Report v2}
+\author{Dr. Susanne Weller}
+\date{\today}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+\maketitle
+
+\section*{Univariate Analysis}
+<<data, echo=FALSE>>=
+setwd("/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v6")
+genclinv6 <- read.table("239_for_Suska_040714.txt", header=TRUE, sep="\t", strip.white = TRUE, na.strings=c("Unknown"," sample not taken", "Missing", "Unable to assess", "Early death", "Withdrew from follow-up data collection", "Equivocal"))
+names(genclinv6)[names(genclinv6)=="TP53_mut_lowVAF"] <- "TP53_mut"
+
+#calculate TP53with low VAF
+#genclinv6$TP53_lowVAF <- genclinv6$TP53_mut_All_VAFs-genclinv6$TP53_morethan5VAF
+genclinv6[,c(2:43, 46)] <- lapply(genclinv6[,c(2:43, 46)], as.factor)
+genclinv6 <- genclinv6[,-c(1, 50, 51, 54,57:58)]
+
+#calculate clones and CNAs as factors:
+#genclinv6$clones_cutoff0 <- as.factor(ifelse(genclinv6$Subclones==0, "0", "1"))
+#genclinv6$CNAs_cutoff6 <- as.factor(ifelse(genclinv6$Total_num_CNAs <= 6, "low", "high"))
+
+#correct levels for vh_mutation_status and Binet
+genclinv6$vh_mutation_status <- as.factor(ifelse(genclinv6$vh_mutation_status=="Biclonal"|genclinv6$vh_mutation_status=="Mutated", "mutated", "unmutated"))
+
+genclinv6$Binet <- as.factor(ifelse(genclinv6$Binet=="A progressive" | genclinv6$Binet=="B", "A_or_B", "C"))
+
+#remove columns with <5% VAFs
+genclinv6$TP53_mut_All_VAFs <- NULL
+#genclinv6$TP53_lowVAF <- NULL
+#rename columns
+names(genclinv6)[names(genclinv6)=="TP53_biallelic"] <- "TP53_bi"
+names(genclinv6)[names(genclinv6)=="ATM_more_than_one_mutation"] <- "ATM_mt1"
+names(genclinv6)[names(genclinv6)=="ATM_biallelic"] <- "ATM_bi"
+names(genclinv6)[names(genclinv6)=="BIRC3_biallelic"] <- "BIRC3_bi"
+names(genclinv6)[names(genclinv6)=="X11q_monoallelic"] <- "X11q_mono"
+names(genclinv6)[names(genclinv6)=="ATM_monoallelic"] <- "ATM_mono"
+names(genclinv6)[names(genclinv6)=="BIRC3_monoallelic"] <- "BIRC3_mono"
+names(genclinv6)[names(genclinv6)=="X6.q_del_homozygous"] <- "X6qdel_homo"
+names(genclinv6)[names(genclinv6)=="X13q_del_homozygous"] <- "X13del_homo"
+names(genclinv6)[names(genclinv6)=="X13q_del_incl_RB1"] <- "X13qdelRB1"
+names(genclinv6)[names(genclinv6)=="X13q_sole_abnorm_Oxdefined"] <- "X13q_Ox"
+names(genclinv6)[names(genclinv6)=="X13q_sole_abnormality_Rossi"] <- "X13q_Rossi"
+
+
+@
+
+<<Univariates, echo=FALSE, eval=TRUE>>=
+source("/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v6/Univariateanalysis.R")
+univariate_variables <- c("TP53_ALL", "TP53_mut", "TP53_bi", "ATM_ALL", "ATM_bi", "ATM_del", "ATM_mono", "BIRC3_ALL", "BIRC3_bi", "BIRC3_del", "BIRC3_mono", "SAMHD1_ALL", "Trisomy_12", "NOTCH1_mut", "SF3B1_mut", "Subclones", "Total_num_CNAs", "vh_mutation_status", "age_at_randomisation", "patient_gender", "Binet", "WBC", "cd38", "MRD")
+
+genclinv6.univar <- genclinv6[colnames(genclinv6) %in% univariate_variables]
+genclinv6.univar.pvalues <- lapply(genclinv6.univar[,-22], univariate.pvalue.genclinv6)
+genclinv6.univar.pvalues <- unlist(genclinv6.univar.pvalues)
+genclinv6.univar.pvalues <- as.data.frame(genclinv6.univar.pvalues)
+colnames(genclinv6.univar.pvalues) <- "p.value"
+#This rounds the p-value
+genclinv6.univar.pvalues$p.value <- signif(genclinv6.univar.pvalues$p.value, 3)
+#This corrects the p-value
+genclinv6.univar.pvalues$uncorrected <- mapply(significance, genclinv6.univar.pvalues$p.value)
+genclinv6.univar.pvalues$corrected.p.value <- p.adjust(genclinv6.univar.pvalues$p.value, method="holm") 
+
+#This gives the significant levels
+genclinv6.univar.pvalues$corrected <- mapply(significance, genclinv6.univar.pvalues$corrected.p.value)
+
+#This gives the n in each group
+genclinv6.univar.pvalues$MRDpos0 <- as.integer(unlist(lapply(genclinv6.univar[,-22], univariate.n.MRDpos.0)))
+genclinv6.univar.pvalues$MRDneg0 <- as.integer(unlist(lapply(genclinv6.univar[,-22], univariate.n.MRDneg.0)))
+genclinv6.univar.pvalues$MRDpos1 <- as.integer(unlist(lapply(genclinv6.univar[,-22], univariate.n.MRDpos.1)))
+genclinv6.univar.pvalues$MRDneg1 <- as.integer(unlist(lapply(genclinv6.univar[,-22], univariate.n.MRDneg.1)))
+genclinv6.univar.pvalues$sum <- genclinv6.univar.pvalues$MRDpos0+genclinv6.univar.pvalues$MRDneg0+genclinv6.univar.pvalues$MRDpos1+genclinv6.univar.pvalues$MRDneg1
+#This gives the test that was used:
+genclinv6.univar.pvalues$testused <- unlist(lapply(genclinv6.univar[,-22], univariate.testused))
+
+ write.csv(genclinv6.univar.pvalues, file="/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v6/Univariatepvalues_SW_17072014.csv", sep="\t")
+@
+
+<<echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(stargazer)
+stargazer(genclinv6.univar.pvalues[,-5], summary=FALSE, title="Univariate Analysis against MRD outcome", font.size="tiny",column.sep.width="1p")
+@
+
+\section*{Associations}
+<<echo=FALSE, eval=TRUE>>=
+#Produce data frame for association calculations:
+#add time until diagnosis
+
+#use two for loops to get the column numbers changed!
+source("/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v6/Association.R")
+
+variables_ass <- c("TP53_ALL", "TP53_mut", "TP53_del", "TP53_cnLOH", "ATM_ALL", "ATM_mut", "ATM_del", "ATM_cnLOH", "BIRC3_ALL", "BIRC3_mut", "BIRC3_del", "NOTCH1_mut", "SF3B1_mut", "X13q_ALL", "X6q._del_ALL", "Trisomy_12", "Trisomy_18", "Trisomy_19", "XPO1_gain", "SAMHD1_ALL", "MYD88_mut", "MED12mutation", "X8q_ALL", "Subclones", "Total_num_CNAs", "Binet", "age_at_randomisation", "patient_gender", "vh_mutation_status", "WBC", "cd38")
+
+genclinv6.ass <- genclinv6[colnames(genclinv6) %in% variables_ass]
+#produce a new data frame that contains variable names as first column
+#This makes the first column a list of all the variables used
+ass.pvalues <- colnames(genclinv6.ass)
+ass.pvalues <- as.data.frame(ass.pvalues)
+names(ass.pvalues)[names(ass.pvalues)=="ass.pvalues"] <- "variables"
+#This just produces a list of all the variables used to go through in the for loops
+variables <- colnames(genclinv6.ass)
+for (i in 1:31){
+ass.pvalues[variables[i]] <- NA
+}
+genclinv6.ass$Subclones <- as.numeric(genclinv6.ass$Subclones)
+genclinv6.ass$Total_num_CNAs <- as.numeric(genclinv6.ass$Total_num_CNAs)
+genclinv6.ass$age_at_randomisation <- as.numeric(genclinv6.ass$age_at_randomisation)
+for (i in 1:31){
+  for (j in 1:31){
+  ass.pvalues[i, j+1] <- association.pvalue(i, j) 
+}
+}
+
+
+ass.pvalues[,c(2:32)] <- lapply(ass.pvalues[,c(2:32)], as.numeric)
+
+ass.pvalues.corrected <- as.matrix(ass.pvalues[, c(2:32)]) 
+ass.pvalues.corrected <- round(p.adjust(ass.pvalues.corrected, method="holm"), digits=3)
+ass.pvalues.corrected <- split(ass.pvalues.corrected, ceiling(seq_along(ass.pvalues.corrected)/length(ass.pvalues[[1]])))
+
+ass.pvalues[,c(2:32)] <- round(ass.pvalues[,c(2:32)], digits=3)
+ass.pvalues.corrected <- as.data.frame(ass.pvalues.corrected)
+colnames(ass.pvalues.corrected) <- variables
+ass.pvalues.corrected <- cbind(variables, ass.pvalues.corrected)
+
+ write.csv(ass.pvalues, file="/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v6/Associationpvalues_v2.csv", sep="\t")
+ write.csv(ass.pvalues.corrected, file="/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v6/Associationpvalues_corrected_v2.csv", sep="\t")
+
+@
+\begin{landscape}
+<<echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(stargazer)
+stargazer(ass.pvalues, summary=FALSE, title="Uncorrected p-values for association between genetic lesions", font.size="tiny",column.sep.width="1p")
+@
+\end{landscape}
+
+\begin{landscape}
+<<echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(stargazer)
+stargazer(ass.pvalues.corrected, summary=FALSE, title="Corrected p-values for association between genetic lesions", font.size="tiny",column.sep.width="1p")
+@
+\end{landscape}
+Odds ratios and p-values for association between genes are represented in this heat map. Note that blue is mutually exclusive, red is associated. Also, the colour key is not symmetrical, colours used:
+\begin{itemize}
+  \item -3 -> oddsratio<0.1 
+  \item -2 -> oddsratio>=0.1 & oddsratio < 0.2
+  \item -1 -> oddsratio>=0.2 & oddsratio < 0.4
+  \item  0 -> oddsratio>=0.4 & oddsratio < 0.6
+  \item  1 -> oddsratio>=0.6 & oddsratio < 0.8
+  \item  2 -> oddsratio>=1 & oddsratio < 3
+  \item  3 -> oddsratio>=3 & oddsratio < 10
+  \item  4 -> oddsratio>=10 & oddsratio < 15
+  \item  5 -> oddsratio>=15 & oddsratio < 20
+  \item  6 -> oddsratio>20
+\end{itemize}\\
+
+<<oddssratio, echo=FALSE, eval=TRUE>>=
+source("oddsratio.R")
+#This makes an empty data frame with the first line the list of variables used:
+ass.oddsratios <- colnames(genclinv6.ass)
+ass.oddsratios <- as.data.frame(ass.oddsratios)
+names(ass.oddsratios)[names(ass.oddsratios)=="ass.oddsratios"] <- "variables"
+for (i in 1:31){
+ass.oddsratios[variables[i]] <- NA
+}
+
+for (i in 1:31){
+  source("oddsratioscale.R")
+  for (j in 1:31){
+  ass.oddsratios[i, j+1] <- oddsratioscale(i, j) 
+}
+}
+@
+
+<<fig=TRUE, echo=FALSE, eval=TRUE>>=
+# Set variables to row.names
+row.names(ass.oddsratios) <- ass.oddsratios$variables
+ass.oddsratios$variables <- NULL
+
+#Produce matrix indicating significance
+source("significancelevels.R")
+sigstars <- apply(ass.pvalues.corrected[2:32], c(1,2), significancelevels) 
+
+
+library("gplots")
+heatmap.2((as.matrix(ass.oddsratios, rownames.force=TRUE)), col=bluered(75), scale="none", na.rm=TRUE, key=TRUE, symkey=FALSE, density.info="none", trace="none", cexRow=0.5, xlab="", ylab="", Rowv=FALSE, Colv=FALSE, cexCol = 0.7, sepwidth=c(0.1,0.1), sepcolor="white", rowsep=c(1:56), colsep=c(1:56), na.color="gray94", cellnote=sigstars, notecol="black", main="Association for n=239")
+
+@
+\section*{Model building - from here, only 209 data points will be used}
+% \section*{Association on model data}
+% This was calculated to see if there are Colinearities that have to be taken into account for the modelling. There are fewer associations than in the 239 data set. 
+<<Model data set, echo=FALSE, eval=TRUE>>=
+model.genclinv6 <-subset(genclinv6, !is.na(genclinv6$MRD))
+@
+% 
+% <<Association on model data, echo=FALSE, eval=TRUE>>=
+% source("/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v6/Association.R")
+% #produce a new data frame that contains variable names as first column
+% #This makes the first column a list of all the variables used
+% model.ass.pvalues <- colnames(model.genclinv6)
+% model.ass.pvalues <- as.data.frame(model.ass.pvalues)
+% names(model.ass.pvalues)[names(model.ass.pvalues)=="model.ass.pvalues"] <- "variables"
+% #This just produces a list of all the variables used to go through in the for loops
+% variables <- colnames(model.genclinv6)
+% for (i in 1:52){
+% model.ass.pvalues[variables[i]] <- NA
+% }
+% model.genclinv6$Subclones <- as.numeric(model.genclinv6$Subclones)
+% model.genclinv6$Total_num_CNAs <- as.numeric(model.genclinv6$Total_num_CNAs)
+% model.genclinv6$age_at_randomisation <- as.numeric(model.genclinv6$age_at_randomisation)
+% for (i in 1:52){
+%   for (j in 1:52){
+%   model.ass.pvalues[i, j+1] <- association.pvalue(i, j) 
+% }
+% }
+% 
+% 
+% model.ass.pvalues[,c(2:53)] <- lapply(model.ass.pvalues[,c(2:53)], as.numeric)
+% 
+% model.ass.pvalues.corrected <- as.matrix(model.ass.pvalues[, c(2:53)]) 
+% model.ass.pvalues.corrected <- round(p.adjust(model.ass.pvalues.corrected, method="holm"), digits=3)
+% model.ass.pvalues.corrected <- split(model.ass.pvalues.corrected, ceiling(seq_along(model.ass.pvalues.corrected)/length(model.ass.pvalues[[1]])))
+% 
+% model.ass.pvalues[,c(2:53)] <- round(model.ass.pvalues[,c(2:53)], digits=3)
+% model.ass.pvalues.corrected <- as.data.frame(model.ass.pvalues.corrected)
+% colnames(model.ass.pvalues.corrected) <- variables
+% model.ass.pvalues.corrected <- cbind(variables, model.ass.pvalues.corrected)
+% 
+% # write.csv(model.ass.pvalues, file="/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v6/Associationpvalues_model.csv", sep="\t")
+% # write.csv(model.ass.pvalues.corrected, file="/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v6/Associationpvalues_model_corrected.csv", sep="\t")
+% 
+% @
+% 
+% <<oddssratio, echo=FALSE, eval=TRUE>>=
+% source("oddsratio.R")
+% #This makes an empty data frame with the first line the list of variables used:
+% model.ass.oddsratios <- colnames(model.genclinv6)
+% model.ass.oddsratios <- as.data.frame(model.ass.oddsratios)
+% names(model.ass.oddsratios)[names(model.ass.oddsratios)=="model.ass.oddsratios"] <- "variables"
+% for (i in 1:52){
+% model.ass.oddsratios[variables[i]] <- NA
+% }
+% 
+% for (i in 1:52){
+%   source("oddsratioscale.R")
+%   for (j in 1:52){
+%   model.ass.oddsratios[i, j+1] <- oddsratioscale(i, j) 
+% }
+% }
+% @
+% \begin{landscape}
+% <<echo=FALSE, results=tex>>=
+% #RESULT TABLE in a nice format!
+% library(stargazer)
+% stargazer(model.ass.pvalues.corrected, summary=FALSE, title="Corrected p-values for association between genetic lesions, n=209", font.size="tiny", column.sep.width="0p")
+% @
+% \end{landscape}
+% <<fig=TRUE, echo=FALSE, eval=TRUE>>=
+% # Set variables to row.names
+% row.names(model.ass.oddsratios) <- model.ass.oddsratios$variables
+% model.ass.oddsratios$variables <- NULL
+% 
+% #Produce matrix indicating significance
+% source("significancelevels.R")
+% sigstars <- apply(model.ass.pvalues.corrected[2:53], c(1,2), significancelevels) 
+% 
+% 
+% library("gplots")
+% heatmap.2((as.matrix(model.ass.oddsratios, rownames.force=TRUE)), col=bluered(75), scale="none", na.rm=TRUE, key=TRUE, symkey=FALSE, density.info="none", trace="none", cexRow=0.5, xlab="", ylab="", Rowv=FALSE, Colv=FALSE, cexCol = 0.7, sepwidth=c(0.1,0.1), sepcolor="white", rowsep=c(1:56), colsep=c(1:56), na.color="gray94", cellnote=sigstars, notecol="black", main="Model data, n=209")
+% @
+
+\section*{Logistic regression model}
+\subsection*{Simple logistic regression models}
+For these models, I used the variables that turned out significant in the univariate analysis (model 1-4 in table 5). This is a commonly used procedure, but it can mean that I selected variables that are highly colinear (or co-occuring), TP53 variables for example.
+<<Simple logistic regression, echo=FALSE, eval=TRUE>>=
+#UNCORRECTED
+#variables from univariate uncorrected
+# variables_uncorrected_univariate <- subset(genclinv6.pvalues, p.value < 0.1)
+# genclin_univariates_uncorrected<-model.genclinv6[,colnames(model.genclinv6)%in% row.names(variables_uncorrected_univariate)]
+# genclin_univariates_uncorrected$MRD <- model.genclinv6$MRD
+# fit.logreg.uncorrected <- glm(MRD~., , family=binomial(logit), data=genclin_univariates_uncorrected)
+#summary(fit.logreg.uncorrected)
+
+#UNCORRECTED - ONLY GENETIC
+#without clinical parameters
+#take out clinical parameters
+# genclin_univariates_uncorrected_gen <- genclin_univariates_uncorrected[-c(22:24)]
+# fit.logreg.uncorrected.gen <- glm(MRD~., , family=binomial(logit), data=genclin_univariates_uncorrected_gen)
+#summary(fit.logreg.uncorrected.gen)
+
+#CORRECTED
+#take significant/trend variables from univariate analysis
+# variables_corrected_univariate <- subset(genclinv6.pvalues, corrected.p.value < 0.1)
+# 
+# genclin_univariates_corrected <-model.genclinv6[,colnames(model.genclinv6)%in% row.names(variables_corrected_univariate)]
+# genclin_univariates_corrected$MRD <- model.genclinv6$MRD
+# fit.logreg.corrected <- glm(MRD~., , family=binomial(logit), data=genclin_univariates_corrected)
+#summary(fit.logreg.corrected)
+
+#CORRECTED - GENETIC
+#take out clinical parameters
+# genclin_univariates_corrected_gen <- genclin_univariates_corrected[-c(8)]
+# 
+# fit.logreg.corrected.gen <- glm(MRD~., , family=binomial(logit), data=genclin_univariates_corrected_gen)
+#summary(fit.logreg.corrected.gen)
+@
+\subsection*{Summarized Model}
+For these models, I summarized the data even more:
+\begin{itemize}
+  \item all trisomies are grouped together
+  \item for each lesion, I used the broadest variable
+\end{itemize}
+
+<<Summarized logistic regression, echo=FALSE, eval=TRUE>>=
+#SUMMARIZED MODEL
+fit.sum.gen1 <-glm(MRD ~ TP53_ALL+
+                        ATM_bi+
+                     BIRC3_mono+
+                        Trisomy_12+
+                        NOTCH1_mut+
+                        SAMHD1_ALL+
+                     X13q_Rossi
+                        
+                        , family=binomial(logit), data=model.genclinv6)
+#summary(fit.sum.gen1)
+#model quality
+model.genclinv6$model.gen1.prob <- predict(fit.sum.gen1, type="response")
+model.genclinv6$model.gen1.class <-ifelse(model.genclinv6$model.gen1.prob > 0.5, "MRD positive_model", "MRD negative_model")
+
+fit.sum.gen2 <-glm(MRD ~ TP53_ALL+
+                        ATM_ALL+
+                        Trisomy_12+
+                        NOTCH1_mut+
+                        SAMHD1_ALL+
+                     SF3B1_mut+
+                     X13q_Rossi
+                        , family=binomial(logit), data=model.genclinv6)
+#summary(fit.sum.gen2)
+
+
+# fit.sum.genvh1 <- model.genclinv6.genclin <- subset(model.genclinv6, !is.na(vh_mutation_status))
+# 
+# model.genclinv6.genclin$prob <- predict(fit.sum.genclin, type="response")
+# 
+# model.genclinv6.genclin$model.genclin.class <-ifelse(model.genclinv6.genclin$prob > 0.5, "MRD positive_model", "MRD negative_model")
+
+@
+%\begin{landscape}
+<<echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(stargazer)
+
+stargazer(fit.sum.gen1,fit.sum.gen2, summary=FALSE, title="Multiple log regression, n=209", font.size="tiny", single.row=TRUE, column.labels=c("genetic 1", "genetic2"), model.numbers=FALSE, notes.align="l", digits=2)
+@
+%\end{landscape}
+% \subsection*{Discussion of different models}
+% You can see that the model gets better, the simpler it is. It basically makes no sense at all to put everything we have into a regression model, it is better to use the broadest defined variables (Have to discuss this with Chris though). One good thing with the model that uses only genetic data is that it is as good as the model that includes vh mutation status. It is not really better, but apparently, vh mutation status is a measure that is hard to obtain, and not very reliable. We could argue that genetic testing can almost replace vh mutation status as a predictor for MRD. To harden this argument, I calculated the missclassification error for both models and they are almost identical, yet we have more unclassified when using the vh mutation status.
+
+% \subsection*{Missclassification Error}
+% <<Missclassification Error, echo=FALSE, eval=TRUE>>=
+% missclasserror<- data.frame(matrix(NA, nrow = 2, ncol = 7))
+% colnames(missclasserror) <- c("model", "true_MRD_neg","correct_MRD_neg","false_MRD_neg", "true_MRD_pos", "correct_MRD_pos", "false_MRD_pos") 
+% missclasserror$model <- c("sum_genetic", "sum_vhmut")
+% missclasserror$true_MRD_neg <- c(summary(model.genclinv6$MRD)[1], summary(model.genclinv6.genclin$MRD)[1])
+% missclasserror$true_MRD_pos <- c(summary(model.genclinv6$MRD)[2], summary(model.genclinv6.genclin$MRD)[2])
+% missclasserror$correct_MRD_neg <- c(table(model.genclinv6$MRD, model.genclinv6$model.gen.class)[1], table(model.genclinv6.genclin$MRD, model.genclinv6.genclin$model.genclin.class)[1])
+% missclasserror$correct_MRD_pos <- c(table(model.genclinv6$MRD, model.genclinv6$model.gen.class)[4], table(model.genclinv6.genclin$MRD, model.genclinv6.genclin$model.genclin.class)[4])
+% missclasserror$false_MRD_neg <- c(table(model.genclinv6$MRD, model.genclinv6$model.gen.class)[2], table(model.genclinv6.genclin$MRD, model.genclinv6.genclin$model.genclin.class)[2])
+% missclasserror$false_MRD_pos <- c(table(model.genclinv6$MRD, model.genclinv6$model.gen.class)[3], table(model.genclinv6.genclin$MRD, model.genclinv6.genclin$model.genclin.class)[3])
+% missclasserror$missclasserror <- (missclasserror$false_MRD_neg+missclasserror$false_MRD_pos)/(missclasserror$true_MRD_neg+missclasserror$true_MRD_pos)
+% missclasserror$unclassified <- c(0, 29)
+% @
+% 
+% <<echo=FALSE, results=tex>>=
+% #RESULT TABLE in a nice format!
+% library(stargazer)
+% 
+% stargazer(missclasserror, summary=FALSE, title="Missclassification for summarized models", font.size="tiny", single.row=TRUE,column.sep.width="1p")
+% @
+
+% # <<echo=FALSE, results=tex>>=
+% # library(xtable)
+% # glm <- xtable(fit.sum.gen)
+% # print(glm)
+% # 
+% # @
+% # 
+% # % \subsection*{Logistic regression with Ridge}
+% <<Ridge logistic regression, echo=FALSE, eval=TRUE>>=
+% library(glmnet)
+% x=data.matrix(genclinMRD[,c(1:48, 54, 55, 56)])
+% y=genclinMRD$MRD
+% ridge.model <- glmnet(x, y, family="binomial", alpha=0)
+% ridge.model
+% plot(ridge.model)
+% summary(ridge.model)
+% coef(ridge.model)
+% #Crossvalidate to find optimal lambda:
+% set.seed(1712)
+% cv.ridge= cv.glmnet(x, y, alpha=0, family="binomial")
+% plot(cv.ridge)
+% bestlambda=cv.ridge$lambda.min
+% bestlambda
+% 
+% #built model with optimal lambda using the predict function to look at the coefficients
+% optimized.ridge.model <- predict(ridge.model, s=bestlambda, type="coefficient")
+% optimized.ridge.model <- as.data.frame(as.matrix(optimized.ridge.model))
+% colnames(optimized.ridge.model)[1]<- "coefficient_ridge"
+% optimized.ridge.model$variables <- row.names(optimized.ridge.model)
+% row.names(optimized.ridge.model) <- NULL
+% 
+% 
+% @
+% 
+% \subsection*{Logistic regression with Lasso}
+% <<Lasso logistic regression, echo=FALSE, eval=TRUE>>=
+% library(glmnet)
+% x=data.matrix(genclinMRD[,c(1:48, 54, 55, 56)])
+% genclinMRD[51]
+% y=as.numeric(genclinMRD$MRD)
+% lasso.model <- glmnet(x, y, family="binomial", alpha=1)
+% lasso.model
+% plot(lasso.model)
+% summary(lasso.model)
+% coef(lasso.model)
+% #Crossvalidate to find optimal lambda:
+% set.seed(1712)
+% cv.lasso= cv.glmnet(x, y, alpha=1, family="binomial")
+% plot(cv.lasso)
+% bestlambda=cv.lasso$lambda.min
+% bestlambda
+% 
+% optimized.lasso.model <- predict(lasso.model, s=bestlambda, type="coefficient")
+% optimized.lasso.model <- as.data.frame(as.matrix(optimized.lasso.model))
+% colnames(optimized.lasso.model)[1]<- "coefficient_lasso"
+% optimized.lasso.model$variables <- row.names(optimized.lasso.model)
+% row.names(optimized.lasso.model) <- NULL
+% @
+% 
+% \subsection*{Compare Lasso and Ridge Regression Coefficients}
+% <<fig=TRUE, eval=TRUE, echo=FALSE>>=
+% coefficients <- cbind(optimized.lasso.model, optimized.ridge.model)
+% coefficients <- coefficients[2:52, ]
+% library(ggplot2)
+% ggplot()+geom_point(data=coefficients, aes(x=coefficient_lasso, y=coefficient_ridge))+
+% geom_text(data=coefficients, aes(x=coefficient_lasso, y=coefficient_ridge, label = variables), vjust = 0.7, hjust = 1, size=3, col="darkblue")+
+%   xlim(-1, 2)+
+%   geom_hline(yintercept=0, alpha=0.5)+
+%   geom_hline(yintercept=c(-0.1, 0.1), col="darkred", alpha=0.5, linetype="dashed")+
+%   geom_vline(xintercept=0, alpha=0.5)
+% @
+% \subsection*{Find the best model with only important parameters (includes cutoff for ridge regression)}
+% <<Model with results from lasso and ridge, echo=FALSE, eval=TRUE>>=
+% variables_ridge_lasso_selected <- subset(coefficients, coefficient_lasso !=0)#& abs(coefficients$coefficient_ridge) > 0.4) 
+% genclin_ridge_lasso_selected <- genclinMRD[,colnames(genclinMRD)%in%variables_ridge_lasso_selected$variables] 
+% genclin_ridge_lasso_selected$MRD <- genclinMRD$MRD
+% 
+% system.time(best.subset.from.lasso <- bestglm(genclin_ridge_lasso_selected, family=binomial))
+% best.subset.from.lasso
+% fit_ridge_lasso_selected <- glm(MRD ~ ., family=binomial(logit), data=genclin_ridge_lasso_selected)
+% summary(fit_ridge_lasso_selected)
+% @
+% 
+% \subsection*{Elastic net and group selection (Hasties)}
+% Grouped selection: automatically include whole groups into the model if one variable amongst them is selected.(Do we want this?)
+% 
+% 
+% 
+% \subsection*{Best subset selection}
+% Variables that are important from Univariate Analysis (including trends)
+% TP53_All
+% TP53_morethan5VAF
+% ATM_ALL
+% ATM_del
+% BIRC3_del
+% ATM_biallelic
+% vh_mutation_status
+% 
+% <<Best subset selection, echo=FALSE, eval=TRUE>>=
+% 
+% library(bestglm)
+% #UNCORRECTED
+% #take significant/trend variables from univariate analysis
+% variables_uncorrected_univariate <- subset(genclinv6.pvalues, p.value < 0.1)
+% 
+% genclin_univariates_selected <-genclinMRD[,colnames(genclinMRD)%in% row.names(variables_uncorrected_univariate)]
+% #take out clinical parameters
+% genclin_univariates_selected$WBC <- NULL
+% genclin_univariates_selected$ALC <- NULL
+% genclin_univariates_selected$vh_mutation_status <- NULL
+% 
+% x=genclin_univariates_selected
+% #x <- na.omit(x)
+% y=genclinMRD$MRD
+% Xy <- cbind(x, y)
+% row.names(Xy) <- NULL
+% 
+% best.subset.selection <- bestglm(Xy, family=binomial)
+% best.subset.selection
+% 
+% #CORRECTED
+% #take significant/trend variables from univariate analysis
+% variables_corrected_univariate <- subset(genclinv6.pvalues, corrected.p.value < 0.1)
+% 
+% genclin_univariates_corrected <-genclinMRD[,colnames(genclinMRD)%in% row.names(variables_corrected_univariate)]
+% #take out clinical parameters
+% genclin_univariates_corrected$vh_mutation_status <- NULL
+% 
+% x=genclin_univariates_corrected
+% #x <- na.omit(x)
+% y=genclinMRD$MRD
+% Xy <- cbind(x, y)
+% row.names(Xy) <- NULL
+% 
+% best.subset.corrected <- bestglm(Xy, family=binomial)
+% best.subset.corrected
+% @
+
+\end{document}
+

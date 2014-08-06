@@ -1,0 +1,39 @@
+This is XeTeX, Version 3.1415926-2.5-0.9999.3 (TeX Live 2013/Debian) (format=xelatex 2014.4.5)  9 JUL 2014 16:14
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**CompareGroupsTableappendix.tex
+(./CompareGroupsTableappendix.tex
+LaTeX2e <2011/06/27>
+Babel <3.9f> and hyphenation patterns for 2 languages loaded.
+
+! LaTeX Error: Environment longtable undefined.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.2     \begin{longtable}
+                         {lcccccc}\caption{Available data by groups of `TP53...
+
+? 
+! Emergency stop.
+ ...                                              
+                                                  
+l.2     \begin{longtable}
+                         {lcccccc}\caption{Available data by groups of `TP53...
+
+Your command was ignored.
+Type  I <command> <return>  to replace it with another command,
+or  <return>  to continue without it.
+
+ 
+Here is how much of TeX's memory you used:
+ 6 strings out of 495674
+ 267 string characters out of 6188156
+ 45805 words of memory out of 5000000
+ 3284 multiletter control sequences out of 15000+600000
+ 3640 words of font info for 14 fonts, out of 8000000 for 9000
+ 14 hyphenation exceptions out of 8191
+ 5i,0n,4p,135b,16s stack positions out of 5000i,500n,10000p,200000b,80000s
+No pages of output.
