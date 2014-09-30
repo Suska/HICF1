@@ -1,0 +1,922 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage[margin=1.5cm]{geometry}
+\usepackage{lscape}
+
+\title{HICF1 -  Final Report v6}
+\author{Dr. Susanne Weller}
+\date{\today}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+\maketitle
+\tableofcontents
+
+\section{Methods and Programmes used}
+\emph{This can go into a paper:}\\
+Statistical analysis was carried out using the programme R (version 3.0.1). Survival data was analysed using the additional package "survival" (version 2.37-7). The code for this analysis is publicly available on github:
+https://github.com/Suska/HICF1\\
+\emph{citation:}\\
+R Core Team (2013). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL http://www.R-project.org/.
+
+\section{Univariate Analysis}
+\emph{This can go into a paper:}\\
+Univariate analysis was done using Fisher's Exact test for binary genetic variables and wilcoxon signed rank test for continuous variables (Number of CNAs and Subclones). Correction for multiple testing was done using False Discovery Rate.\\
+\emph{citation:}\\
+Benjamini, Y., and Hochberg, Y. (1995). Controlling the false discovery rate: a practical and powerful approach to multiple testing. Journal of the Royal Statistical Society Series B, 57, 289–300.
+
+<<data, echo=FALSE>>=
+setwd("/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v7")
+genclinv7 <- read.table("ForSuska250_V2.txt", header=TRUE, sep="\t", strip.white = TRUE, na.strings=c("Unknown"," sample not taken", "Missing", "Unable to assess", "Early death", "Withdrew from follow-up data collection", "Equivocal", "Unknown samples not taken", "samples not taken  Partial Remission (PR)"))
+#names(genclinv6)[names(genclinv6)=="TP53_mut_lowVAF"] <- "TP53_mut"
+
+#calculate TP53with low VAF
+#samples_lowVAF <- c("ARC079", "ARC304", "ADM012", "ARC017", "ARC091", "ARC393", "ARC592", "ARC683")
+#genclinv6$TP53_lowVAF <- as.factor(ifelse(genclinv6$ID %in% samples_lowVAF, "1", "0"))
+genclinv7[,c(2:42, 59)] <- lapply(genclinv7[,c(2:42,59)], as.factor)
+genclinv7 <- genclinv7[,-c(1, 50, 51, 54,57:58)]
+
+#correct levels for vh_mutation_status and Binet
+genclinv7$vh_mutation_status <- as.factor(ifelse(genclinv7$vh_mutation_status=="Biclonal"|genclinv7$vh_mutation_status=="Mutated", "mutated", "unmutated"))
+
+genclinv7$Binet <- as.factor(ifelse(genclinv7$Binet=="A progressive" | genclinv7$Binet=="B", "A_or_B", "C"))
+
+#remove columns with <5% VAFs
+genclinv7$TP53_mutation_All_VAFs <- NULL
+@
+\emph{\\Note that TP53\_mut are only mutation with >5\%VAF! Univariate p-values change dramatically if you add more variables, this is due to the multiple testing problem.}
+<<Univariates, echo=FALSE, eval=TRUE>>=
+source("Univariateanalysis.R")
+univariate_variables <- c( "TP53_mut", "TP53_bi", "ATM_bi", "ATM_del", "ATM_mono", "BIRC3_bi", "BIRC3_del", "BIRC3_mono", "SAMHD1_ALL", "trisomy_12", "NOTCH1_mut", "SF3B1_mut", "Subclones", "CNAs", "MRD", "11q_mono")
+
+genclinv7.univar <- genclinv7[colnames(genclinv7) %in% univariate_variables]
+genclinv7.univar.pvalues <- lapply(genclinv7.univar[,-15], univariate.pvalue.genclinv7)
+genclinv7.univar.pvalues <- unlist(genclinv7.univar.pvalues)
+genclinv7.univar.pvalues <- as.data.frame(genclinv7.univar.pvalues)
+colnames(genclinv7.univar.pvalues) <- "p"
+#This rounds the p-value
+genclinv7.univar.pvalues$p <- round(genclinv7.univar.pvalues$p, 3)
+#This corrects the p-value
+genclinv7.univar.pvalues$sig <- mapply(significance, genclinv7.univar.pvalues$p)
+genclinv7.univar.pvalues$corr.p <- round(p.adjust(genclinv7.univar.pvalues$p, method="fdr"),3)
+
+#This gives the significant levels
+genclinv7.univar.pvalues$sig.corr <- mapply(significance, genclinv7.univar.pvalues$corr.p)
+
+#This gives the n in each group
+genclinv7.univar.pvalues$MRDpos_0 <- (round(as.integer(unlist(lapply(genclinv7.univar[,-15], univariate.n.MRDpos.0)))/217,2))*100
+genclinv7.univar.pvalues$MRDpos_0 <- paste(genclinv7.univar.pvalues$MRDpos_0, "%", sep="")
+genclinv7.univar.pvalues$MRDneg_0 <- round(as.integer(unlist(lapply(genclinv7.univar[,-15], univariate.n.MRDneg.0)))/217, 2)*100
+genclinv7.univar.pvalues$MRDneg_0 <- paste(genclinv7.univar.pvalues$MRDneg_0, "%", sep="")
+genclinv7.univar.pvalues$MRDpos_1 <- round(as.integer(unlist(lapply(genclinv7.univar[,-15], univariate.n.MRDpos.1)))/217,2)*100
+genclinv7.univar.pvalues$MRDpos_1 <- paste(genclinv7.univar.pvalues$MRDpos_1, "%", sep="")
+genclinv7.univar.pvalues$MRDneg_1 <- round(as.integer(unlist(lapply(genclinv7.univar[,-15], univariate.n.MRDneg.1)))/214,2)*100
+genclinv7.univar.pvalues$MRDneg_1 <- paste(genclinv7.univar.pvalues$MRDneg_1, "%", sep="")
+
+#This gives the test that was used:
+#genclinv7.univar.pvalues$testused <- unlist(lapply(genclinv7.univar[,-19], univariate.testused))
+
+genclinv7.univar.pvalues <- genclinv7.univar.pvalues[order(row.names(genclinv7.univar.pvalues)),]
+genclinv7.univar.pvalues <- genclinv7.univar.pvalues[c(1:6, 8:10, 12:14,7,11),]
+
+#  write.csv(genclinv7.univar.pvalues, file="/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v7/Univariatepvalues_SW_17072014.csv", sep="\t")
+@
+
+<<echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(stargazer)
+stargazer(genclinv7.univar.pvalues, summary=FALSE, title="Univariate Analysis against MRD outcome", font.size="tiny",column.sep.width="0p")
+@
+
+<<fig=TRUE, echo=FALSE, eval=TRUE, width=9>>=
+library(ggplot2)
+model.genclinv7 <-subset(genclinv7, !is.na(genclinv7$MRD))
+atm_bi <- ggplot(data=model.genclinv7)+geom_bar(aes(x=MRD, fill=ATM_bi),position="dodge")+
+  scale_fill_manual(values=c("cadetblue", "darkmagenta"))+
+  ggtitle("ATM biallelic")
+
+birc3_del <- ggplot(data=model.genclinv7)+geom_bar(aes(x=MRD, fill=BIRC3_del),position="dodge")+
+  scale_fill_manual(values=c("cadetblue", "darkmagenta"))+
+  ggtitle("BIRC3 deletion")
+
+tp53_mut <- ggplot(data=model.genclinv7)+geom_bar(aes(x=MRD, fill=TP53_mut),position="dodge")+
+  scale_fill_manual(values=c("cadetblue", "darkmagenta"))+
+  ggtitle("TP53 mutation")
+
+samhd1_all <- ggplot(data=model.genclinv7)+geom_bar(aes(x=MRD, fill=SAMHD1_ALL),position="dodge")+
+  scale_fill_manual(values=c("cadetblue", "darkmagenta"))+
+  ggtitle("SAMHD1 all lesions")
+
+trisomy12 <- ggplot(data=model.genclinv7)+geom_bar(aes(x=MRD, fill=trisomy_12),position="dodge")+
+  scale_fill_manual(values=c("cadetblue", "darkmagenta"))+
+  ggtitle("Trisomy 12")
+
+subclones <- ggplot(data=model.genclinv7)+geom_violin(aes(x=MRD, y=Subclones))+
+  scale_fill_manual(values=c("cadetblue", "darkmagenta"))+
+  ggtitle("Presence of Subclones")
+
+source("/home/andreas/suska/work/X_usefulcode/Rfunctions/multiplotfunction.R")
+multiplot(atm_bi, birc3_del, tp53_mut, samhd1_all, trisomy12, subclones, cols=2)
+@
+
+\section{Associations}
+To test for associations, I first counted the number of patients that have a particular mutation, and derived the probablity of having this lesion:\\
+Example:\\
+8 out of 217 patients have mutation X -> probability estimate for this mutation is 8/217\\
+15 out of 217 patients have mutation Y ->  probability estimate for this mutation is 15/217\\
+The expected probablity of having both mutations is then 8/217 x 15/217\\
+
+I then compared this expected probability to the observed probability using Exact Binomial Tests. This test is the only one that I could find that can deal with low numbers AND allows for testing agains expected frequencies. Fisher's Exact test is often used that way by constructing the expected frequencies from the expected probabilities, but does not allow for integers, which is a problem with the low numbers we are dealing with.\\
+I again used False Discovery Rate to correct the p-values.\\
+
+\emph{This can go into a paper:}\\
+We compared expected and observed probabilities using Exact Binomial Tests and corrected for mulitple testing using False Discovery Rates.
+
+<<echo=FALSE, eval=TRUE>>=
+#Produce data frame for association calculations:
+
+#use two for loops to get the column numbers changed!
+source("Association.R")
+
+variables_ass <- c("TP53_mut", "TP53_del", "TP53_cnLOH", "ATM_mut", "ATM_del", "ATM_cnLOH", "BIRC3_mut", "BIRC3_del", "NOTCH1_mut", "SF3B1_mut", "X13q_ALL", "X6q_del", "trisomy_12", "trisomy_18", "trisomy_19", "XPO1_gain", "SAMHD1_ALL", "MYD88mut", "MED12mut", "X8q_ALL", "Subclones", "CNAs")
+
+genclinv7.ass <- genclinv7[colnames(genclinv7) %in% variables_ass]
+#produce a new data frame that contains variable names as first column
+#This makes the first column a list of all the variables used
+ass.pvalues <- colnames(genclinv7.ass)
+ass.pvalues <- as.data.frame(ass.pvalues)
+names(ass.pvalues)[names(ass.pvalues)=="ass.pvalues"] <- "variables"
+#This just produces a list of all the variables used to go through in the for loops
+variables <- colnames(genclinv7.ass)
+for (i in 1:22){
+ass.pvalues[variables[i]] <- NA
+}
+genclinv7.ass$Subclones <- as.numeric(genclinv7.ass$Subclones)
+genclinv7.ass$CNAs <- as.numeric(genclinv7.ass$CNAs)
+for (i in 1:22){
+  for (j in 1:22){
+  ass.pvalues[i, j+1] <- association.pvalue(i, j) 
+}
+}
+
+ass.pvalues[,c(2:23)] <- lapply(ass.pvalues[,c(2:23)], as.numeric)
+
+ass.pvalues.corrected <- as.matrix(ass.pvalues[, -1]) 
+ass.pvalues.corrected <- round(p.adjust(ass.pvalues.corrected, method="fdr"), digits=3)
+ass.pvalues.corrected <- split(ass.pvalues.corrected, ceiling(seq_along(ass.pvalues.corrected)/length(ass.pvalues[[1]])))
+
+ass.pvalues[,c(2:23)] <- round(ass.pvalues[,c(2:23)], digits=3)
+ass.pvalues.corrected <- as.data.frame(ass.pvalues.corrected)
+colnames(ass.pvalues.corrected) <- variables
+ass.pvalues.corrected <- cbind(variables, ass.pvalues.corrected)
+
+#Write result into separate file:
+#To write the results into separate excel files, uncomment these lines and insert the path to where they should be written
+ #write.csv(ass.pvalues, file="/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v7/Associationpvalues_v2.csv", sep="\t")
+# write.csv(ass.pvalues.corrected, file="/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v7/Associationpvalues_corrected_v2.csv", sep="\t")
+
+@
+
+\begin{landscape}
+<<echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(xtable)
+pvaluetable <- xtable(ass.pvalues, caption="Association chart, uncorrected pvalues, Fisher's test")
+align(pvaluetable) <- "|r|r|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|"
+print(pvaluetable, vline.after = c(1,1), size="tiny", type="latex", rotate.rownames=TRUE, scalebox=0.6, width=10, include.rownames=FALSE)
+@
+
+<<echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(xtable)
+corr.pvaluetable <- xtable(ass.pvalues.corrected, caption="Association chart, corrected pvalues, Fisher's test with FDR correction")
+align(corr.pvaluetable) <- "|r|r|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|"
+print(corr.pvaluetable, vline.after = c(1,1), size="tiny", type="latex", rotate.rownames=TRUE, scalebox=0.6, width=10, include.rownames=FALSE)
+@
+ \end{landscape}
+
+Odds ratios and p-values for associations between genes are represented in this heatmap. Note that odds ratios 0-1 (the first bar in the colour key) are mutually exclusive, everything else already counts as co-occuring.\\
+\emph{Note: Colour key still needs be adjusted to a somewhat funny scale to see this properly.}\\
+\emph{This can go into a paper:}\\
+Odds ratios and significant values for associations between genes are represented in this graph. Odds ratios between 0 and 1 indicate mutually exclusive genes, while odds ratios above 1 indicate increasing co\-occurence. P-values are defined as follows: ***: p<0.001, **: p<0.01, *: p<0.05, t:trend, p<0.15
+<<oddssratio, echo=FALSE, eval=TRUE>>=
+source("oddsratio.R")
+#This makes an empty data frame with the first line the list of variables used:
+ass.oddsratios <- colnames(genclinv7.ass)
+ass.oddsratios <- as.data.frame(ass.oddsratios)
+names(ass.oddsratios)[names(ass.oddsratios)=="ass.oddsratios"] <- "variables"
+for (i in 1:22){
+ass.oddsratios[variables[i]] <- NA
+}
+
+for (i in 1:22){
+  for (j in 1:22){
+  ass.oddsratios[i, j+1] <- oddsratio(i, j) 
+}
+}
+@
+\begin{landscape}
+<<echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(xtable)
+oddsratiotable <- xtable(ass.oddsratios, caption="Odds ratios for association between genes")
+align(oddsratiotable) <- "|r|r|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|"
+print(oddsratiotable, vline.after = c(1,1), size="tiny", type="latex", rotate.rownames=TRUE, scalebox=0.6, width=10, include.rownames=FALSE)
+@
+\end{landscape}
+\newpage
+
+<<fig=TRUE, echo=FALSE, eval=TRUE, width=9.5>>=
+source("significancelevels.R")
+sigstars <- apply(ass.pvalues.corrected[2:23], c(1,2), significancelevels) 
+
+#Remove all odds ratios with insignificant values:
+ass.oddsratios.plot <- colnames(genclinv7.ass)
+ass.oddsratios.plot <- as.data.frame(ass.oddsratios.plot)
+names(ass.oddsratios.plot)[names(ass.oddsratios.plot)=="ass.oddsratios.plot"] <- "variables"
+for (i in 1:22){
+ass.oddsratios.plot[variables[i]] <- NA
+}
+source("oddsratio.R")
+for (i in 1:22){
+  for (j in 1:22){
+  if(sigstars[i, j]==""){
+    ass.oddsratios.plot[i, j+1] <- NA
+  }
+  else{
+   ass.oddsratios.plot[i, j+1] <- oddsratio(i, j)  
+  }  
+}
+}
+
+ass.oddsratios.plot <- data.frame(lapply(ass.oddsratios.plot, as.numeric))
+
+#This function converts the actual odds ratio into a colour coding value:
+source("colourcoder.R")
+
+ass.oddsratios.plot.colour <- data.frame(lapply(ass.oddsratios.plot, colourcoder))
+ass.oddsratios.plot.colour <- data.frame(lapply(ass.oddsratios.plot.colour, as.numeric))
+ass.oddsratios.plot.colour$variables <- NULL
+
+# Set variables to row.names
+row.names(ass.oddsratios.plot.colour) <- variables_ass
+
+#get your own colour scheme
+library("RColorBrewer")
+oddsratiocolours <- colorRampPalette(brewer.pal(9,"BrBG"))
+
+library("gplots")
+heatmap.2(as.matrix(ass.oddsratios.plot.colour[3:22], rownames.force=TRUE), col=oddsratiocolours, scale="none", na.rm=TRUE, key=TRUE, symkey=FALSE, density.info="none", trace="none", cexRow=0.5, xlab="", ylab="", Rowv=FALSE, Colv=FALSE, cexCol = 0.7, sepwidth=c(0.1,0.1), sepcolor="white", rowsep=c(1:22), colsep=c(1:22), na.color="gray94", cellnote=sigstars[,3:22], notecol="black", main="Association for n=250", breaks=c(1,2,3,4,5,6,7,8,9))
+
+@
+
+\subsection{Multiple logistic regression models}
+
+\emph{This can go into a paper:}\\
+As significantly more MRD positive patients have progressed during the trial (Chi Square test, ChiSquare=10.26, n=104, p=0.001), we use MRD status as proxy for progression free survival.\\
+Mulitvariate analysis was done using multiple logistic regression models. We selected only variables that were significant in the univariate analysis to go into the multiple logistic regression. One specific goal was to see if ATM biallelic is a better predictor for MRD positivity than ATM deletions.
+
+
+<<Summarized logistic regression, echo=FALSE, eval=TRUE>>=
+model.genclinv7 <-subset(genclinv7, !is.na(genclinv7$MRD))
+
+fit.sum.gen1 <-glm(MRD ~ TP53_ALL+
+                        ATM_del+
+                        trisomy_12+
+                        #NOTCH1_mut
+                        SAMHD1_ALL
+                        #SF3B1_mut
+                        
+                        , family=binomial(logit), data=model.genclinv7)
+
+fit.sum.gen2 <-glm(MRD ~TP53_ALL+
+                        ATM_bi+
+                        #BIRC3_del+
+                        trisomy_12+
+                        SAMHD1_ALL
+                        #SF3B1_mut
+                   
+                        , family=binomial(logit), data=model.genclinv7)
+
+fit.sum.gen3 <-glm(MRD ~ TP53_ALL+
+                        ATM_bi+
+                        trisomy_12+
+                        BIRC3_mono*trisomy_12+
+                        SAMHD1_ALL
+                        #SF3B1_mut
+                        , family=binomial(logit), data=model.genclinv7)
+
+fit.sum.gen4 <-glm(MRD ~  TP53_ALL+
+                        ATM_bi+
+                        trisomy_12+
+                        BIRC3_mono+
+                        SAMHD1_ALL
+                        #SF3B1_mut
+                        , family=binomial(logit), data=model.genclinv7)
+
+fit.sum.gen5 <-glm(MRD ~ TP53_ALL+
+                         ATM_bi+
+                         trisomy_12+
+                         BIRC3_mono
+                         
+                         , family=binomial(logit), data=model.genclinv7)
+# 
+fit.sum.gen6 <-glm(MRD ~TP53_ALL
+                         , family=binomial(logit), data=model.genclinv7)
+
+model.genclinv7.vhmut <- subset(model.genclinv7, !is.na(vh_mutation_status))
+fit.vhmut <-glm(MRD ~ vh_mutation_status
+                        , family=binomial(logit), data=model.genclinv7.vhmut)
+fit.vhmut <-glm(MRD ~ vh_mutation_status
+                        , family=binomial(logit), data=model.genclinv7.vhmut)
+#fit.Binet <-glm(MRD ~ Binet
+#                        , family=binomial(logit), data=model.genclinv7)
+
+@
+
+<<stargazer,echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(stargazer)
+stargazer(fit.sum.gen1,fit.sum.gen2, fit.sum.gen3,fit.sum.gen4, fit.sum.gen5, fit.sum.gen6, fit.vhmut, summary=FALSE, title="Multiple log regression, n=217", font.size="tiny", single.row=TRUE, column.labels=c("genetic1", "genetic2", "genetic3", "genetic4", "genetic5", "genetic6", "genetic7"), model.numbers=FALSE, notes.align="l", digits=2)
+@
+ 
+\newpage
+\subsection{Missclassification Error}
+<<Missclassification Error, echo=FALSE, eval=TRUE>>=
+#list of all models
+logregmodels <- list(fit.sum.gen1,fit.sum.gen2, fit.sum.gen3,fit.sum.gen4, fit.sum.gen5, fit.sum.gen6, fit.vhmut)
+modelnames <- c("fit.sum.gen1", "fit.sum.gen2","fit.sum.gen3","fit.sum.gen4","fit.sum.gen5", "fit.sum.gen6", "fit.vhmut")
+#make empty dataframe for results
+missclasserror<- data.frame(matrix(NA, nrow = length(logregmodels), ncol = 5))
+colnames(missclasserror) <- c("model", "correct_MRD_neg","false_MRD_neg", "correct_MRD_pos", "false_MRD_pos") 
+missclasserror$model <- c("fit.sum.gen1", "fit.sum.gen2","fit.sum.gen3","fit.sum.gen4","fit.sum.gen5", "fit.sum.gen6", "fit.vhmut")
+model.genclinv7[, c(56:67)] <- NA
+for (i in 1:7){
+if (i < 7){
+model.genclinv7[55+i] <- predict(logregmodels[[i]], type="response")
+model.genclinv7[61+i] <- ifelse(model.genclinv7[55+i] > 0.5, "MRD positive", "MRD negative")
+missclasserror$correct_MRD_neg[i] <- table(model.genclinv7$MRD, model.genclinv7[,61+i])[1]
+missclasserror$false_MRD_neg[i] <- table(model.genclinv7$MRD, model.genclinv7[,61+i])[2]
+missclasserror$correct_MRD_pos[i] <- table(model.genclinv7$MRD, model.genclinv7[,61+i])[4]
+missclasserror$false_MRD_pos[i] <- table(model.genclinv7$MRD, model.genclinv7[,61+i])[3]
+missclasserror$missclasserr[i] <- (missclasserror$false_MRD_pos[i]+missclasserror$false_MRD_neg[i])/217
+}
+if (i==7){
+model.genclinv7.vhmut <- subset(model.genclinv7, !is.na(vh_mutation_status))
+model.genclinv7.vhmut$predict_vhmut <- predict(logregmodels[[i]], type="response")
+model.genclinv7.vhmut$class_vhmut <-ifelse(model.genclinv7.vhmut$predict_vhmut > 0.5, "MRD positive", "MRD negative")
+missclasserror$correct_MRD_neg[i] <- table(model.genclinv7.vhmut$MRD, model.genclinv7.vhmut$class_vhmut)[1]
+missclasserror$false_MRD_neg[i] <- table(model.genclinv7.vhmut$MRD, model.genclinv7.vhmut$class_vhmut)[2]
+missclasserror$correct_MRD_pos[i] <- table(model.genclinv7.vhmut$MRD, model.genclinv7.vhmut$class_vhmut)[4]
+missclasserror$false_MRD_pos[i] <- table(model.genclinv7.vhmut$MRD, model.genclinv7.vhmut$class_vhmut)[3]
+missclasserror$missclasserr[i] <- (missclasserror$false_MRD_pos[i]+missclasserror$false_MRD_neg[i])/181
+}
+}
+
+names(model.genclinv7)[56:61] <- c("predict_genetic1", "predict_genetic2", "predict_genetic3", "predict_genetic4","predict_genetic5","predict_genetic6")
+ 
+missclasserror$unclassified <- c(0, 0, 0, 0, 0, 0, (217-196)/217)
+@
+
+<<echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(stargazer)
+stargazer(missclasserror, summary=FALSE, title="Missclassification for summarized models", font.size="tiny", single.row=TRUE,column.sep.width="1p")
+@
+\subsubsection{Model probabilities}
+
+The following graphs show the predicted probability for MRD positivity of the different models, with the x-axis showing the real MRD status. Note again that the final model only contains 181 data points.\\
+The graph depicts the following variables (note:Not all of them are necessarily in the model depicted):\\
+\begin{itemize}
+  \item Trisomy12 is depicted by the shape of the points (cirle=0, square=1).
+  \item SAMHD1 is depicted by translucent points (translucent=mutated)
+  \item ATM biallelic is depicted by light blue filling.
+  \item BIRC3 is depicted by green(0) and red(1) point outline.
+  \item TP53 is depicted by point size (large=1)
+\end{itemize}
+The dashed red line shows the 0.5 line. Everything above is classified by the model as MRD positive, below is classified as MRD negative.
+\newpage
+
+<<genetic1,fig=TRUE, echo=FALSE, width=10, height=5>>=
+library(ggplot2)
+ggplot(data=model.genclinv7)+
+geom_point(aes(x=MRD, y=predict_genetic1, size=TP53_ALL, colour=BIRC3_mono, shape=trisomy_12, alpha=SAMHD1_ALL, fill=ATM_del),position=position_jitter(w=0.2, h=0))+
+  scale_alpha_manual(values=c(0.5, 1))+
+  scale_size_manual(values=c(3,6))+
+  scale_colour_manual(values=c("darkgreen", "red"))+
+  scale_fill_manual(values=c("white", "lightblue"))+
+  scale_shape_manual(values=c(21, 23))+
+  theme_bw()+
+  ggtitle("Model: genetic1\nPredicted probabilities for MRD positivity, n=217")+
+  ylim(c(0,1))+
+  geom_hline(y=0.5, linetype=3, colour="darkred", alpha=0.5)
+@
+
+<<genetic2,fig=TRUE, echo=FALSE, width=10, height=5>>=
+library(ggplot2)
+ggplot(data=model.genclinv7)+
+geom_point(aes(x=MRD, y=predict_genetic2, size=TP53_ALL, colour=BIRC3_mono, shape=trisomy_12, alpha=SAMHD1_ALL, fill=ATM_del),position=position_jitter(w=0.2, h=0))+
+  scale_alpha_manual(values=c(0.5, 1))+
+  scale_size_manual(values=c(3,6))+
+  scale_colour_manual(values=c("darkgreen", "red"))+
+  scale_fill_manual(values=c("white", "lightblue"))+
+  scale_shape_manual(values=c(21, 23))+
+  theme_bw()+
+  ggtitle("Model: genetic2\nPredicted probabilities for MRD positivity, n=217")+
+  ylim(c(0,1))+
+  geom_hline(y=0.5, linetype=3, colour="darkred", alpha=0.5)
+@
+
+<<genetic3,fig=TRUE, echo=FALSE, width=10, height=5>>=
+library(ggplot2)
+ggplot(data=model.genclinv7)+
+geom_point(aes(x=MRD, y=predict_genetic3, size=TP53_ALL, colour=BIRC3_mono, shape=trisomy_12, alpha=SAMHD1_ALL, fill=ATM_bi),position=position_jitter(w=0.2, h=0))+
+  scale_alpha_manual(values=c(0.5, 1))+
+  scale_size_manual(values=c(3,6))+
+  scale_colour_manual(values=c("darkgreen", "red"))+
+  scale_fill_manual(values=c("white", "lightblue"))+
+  scale_shape_manual(values=c(21, 23))+
+  theme_bw()+
+  ggtitle("Model: genetic3\nPredicted probabilities for MRD positivity, n=217")+
+  ylim(c(0,1))+
+  geom_hline(y=0.5, linetype=3, colour="darkred", alpha=0.5)
+@
+
+<<genetic4,fig=TRUE, echo=FALSE, width=9, height=5>>=
+ggplot(data=model.genclinv7)+
+geom_point(aes(x=MRD, y=predict_genetic4, size=TP53_ALL, colour=BIRC3_mono, shape=trisomy_12, fill=ATM_bi,alpha=SAMHD1_ALL),position=position_jitter(w=0.3, h=0))+
+  scale_alpha_manual(values=c(0.5, 1))+
+  scale_size_manual(values=c(3,6))+
+  scale_colour_manual(values=c("darkgreen", "red"))+
+  scale_fill_manual(values=c("white", "lightblue"))+
+  scale_shape_manual(values=c(21, 23))+
+  theme_bw()+
+  ggtitle("Model: genetic4\nPredicted probabilities for MRD positivity, n=217")+
+geom_hline(y=0.5, linetype=3, colour="darkred", alpha=0.5)+
+  ylim(c(0,1))
+  #scale_y_continuous(breaks=c(0.00, 0.25, 0.5, 0.75, 1))
+@
+
+<<genetic5,fig=TRUE, echo=FALSE, width=9, height=5>>=
+ggplot(data=model.genclinv7)+
+geom_point(aes(x=MRD, y=predict_genetic5, size=TP53_ALL, colour=BIRC3_mono, shape=trisomy_12, fill=ATM_bi,alpha=SAMHD1_ALL),position=position_jitter(w=0.3, h=0))+
+  scale_alpha_manual(values=c(0.5, 1))+
+  scale_size_manual(values=c(3,6))+
+  scale_colour_manual(values=c("darkgreen", "red"))+
+  scale_fill_manual(values=c("white", "lightblue"))+
+  scale_shape_manual(values=c(21, 23))+
+  theme_bw()+
+  ggtitle("Model: genetic5\nPredicted probabilities for MRD positivity, n=217")+
+geom_hline(y=0.5, linetype=3, colour="darkred", alpha=0.5)+
+  ylim(c(0,1))
+  #scale_y_continuous(breaks=c(0.00, 0.25, 0.5, 0.75, 1))
+@
+
+<<genetic6,fig=TRUE, echo=FALSE, width=9, height=5>>=
+ggplot(data=model.genclinv7)+
+geom_point(aes(x=MRD, y=predict_genetic6, size=TP53_ALL, colour=BIRC3_mono, shape=trisomy_12, fill=ATM_bi,alpha=SAMHD1_ALL),position=position_jitter(w=0.3, h=0))+
+  scale_alpha_manual(values=c(0.5, 1))+
+  scale_size_manual(values=c(3,6))+
+  scale_colour_manual(values=c("darkgreen", "red"))+
+  scale_fill_manual(values=c("white", "lightblue"))+
+  scale_shape_manual(values=c(21, 23))+
+  theme_bw()+
+  ggtitle("Model: genetic6\nPredicted probabilities for MRD positivity, n=217")+
+geom_hline(y=0.5, linetype=3, colour="darkred", alpha=0.5)+
+  ylim(c(0,1))
+  #scale_y_continuous(breaks=c(0.00, 0.25, 0.5, 0.75, 1))
+@
+
+<<vhmut,fig=TRUE, echo=FALSE, width=9, height=5>>=
+ggplot(data=model.genclinv7.vhmut)+
+geom_point(aes(x=MRD, y=predict_vhmut, size=TP53_ALL, colour=BIRC3_del, shape=trisomy_12, fill=ATM_bi,alpha=SAMHD1_ALL),position=position_jitter(w=0.3, h=0))+
+  scale_alpha_manual(values=c(0.4, 1))+
+  scale_size_manual(values=c(3,6))+
+  scale_colour_manual(values=c("darkgreen", "red"))+
+  scale_fill_manual(values=c("white", "lightblue"))+
+  scale_shape_manual(values=c(21, 23))+
+  theme_bw()+
+  ggtitle("Model: genetic7\nPredicted probabilities for MRD positivity, n=217")+
+geom_hline(y=0.5, linetype=3, colour="darkred", alpha=0.5)+
+  ylim(c(0,1))
+  #scale_y_continuous(breaks=c(0.00, 0.25, 0.5, 0.75, 1))
+@
+\subsection{Model Accuracy}
+To estimate model accuracy, we selected all patients that were correctly classified and looked at their model probablities. You can see nicely that model 1, despite being the model with the best missclassification errors, is not as accurate as model 2 and 4 (both using ATM bi) for MRD positivity. \\
+<<fig=TRUE, echo=FALSE, eval=TRUE, width=11, height=6>>=
+#This function returns the plot of predicted probabilities by MRD status
+pred_prob_plotfunction <- function(dataframe){
+  pred_plot <- ggplot(data=dataframe)+
+  #change here if you want to have boxplots instead of violins:
+  geom_violin(data=dataframe, aes(x=MRD, y=pred_prob_plot))+
+  geom_point(data=dataframe, aes(x=MRD, y=pred_prob_plot), position=position_jitter(height = 0, width = 0.1))+
+  theme_bw()+
+  ylab("model probability")+
+  ggtitle(paste(dataframe$model.name))+
+  ylim(c(0.5, 1))
+  return(pred_plot)
+}
+
+#create an empty list to store plots in
+pred_prob_plotlist <- vector("list", 6)
+
+#unlist model results:
+model.genclinv7[62:67]<- lapply(model.genclinv7[62:67], as.factor)
+modelaccuracy <- data.frame(matrix(NA, nrow = 6, ncol = 9))
+modelaccuracy[,1]<- modelnames[-7]
+
+#loop through all model results, create plot and store in list
+for (i in 1:6){
+#This selects all correctly classified patients
+model.genclinv7.plot <- subset(model.genclinv7, model.genclinv7[,61+i]== model.genclinv7$MRD)
+#This stores the model name for the headings in the plot
+model.genclinv7.plot$model.name <- paste(modelnames[i])
+#This calculates the probability of being MRD negative for the negative patients:
+model.genclinv7.plot$pred_prob_plot <- ifelse(model.genclinv7.plot$MRD =="MRD positive", model.genclinv7.plot[,55+i], 1-model.genclinv7.plot[,55+i])
+#This creates the plot and stores it in the list
+pred_prob_plotlist[[i]] <- pred_prob_plotfunction(model.genclinv7.plot)
+
+#This calculates some moments for each group
+model.genclinv7.plot.positive <- subset(model.genclinv7.plot, model.genclinv7.plot$MRD == "MRD positive")
+modelaccuracy[i, 2]<- mean(model.genclinv7.plot.positive$pred_prob_plot)
+modelaccuracy[i, 3]<- median(model.genclinv7.plot.positive$pred_prob_plot)
+modelaccuracy[i, 4]<- min(model.genclinv7.plot.positive$pred_prob_plot)
+modelaccuracy[i, 5]<- max(model.genclinv7.plot.positive$pred_prob_plot)
+
+model.genclinv7.plot.negative <- subset(model.genclinv7.plot, model.genclinv7.plot$MRD == "MRD negative")
+modelaccuracy[i, 6]<- mean(model.genclinv7.plot.negative$pred_prob_plot)
+modelaccuracy[i, 7]<- median(model.genclinv7.plot.negative$pred_prob_plot)
+modelaccuracy[i, 8]<- min(model.genclinv7.plot.negative$pred_prob_plot)
+modelaccuracy[i, 9]<- max(model.genclinv7.plot.negative$pred_prob_plot)
+}
+
+
+
+multiplot(plotlist=pred_prob_plotlist[1:6], cols=6)
+@
+
+<<model accuracy numbers, echo=FALSE, eval=TRUE>>=
+library(scales)
+modelaccuracy[2:9] <- lapply(modelaccuracy[2:9], function(x) percent(round(x, 2)))
+colnames(modelaccuracy) <- c("model", "+mean", "+median", "+min", "+max", "-mean", "-median", "-min", "-max")
+@
+
+<<echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(stargazer)
+stargazer(modelaccuracy, summary=FALSE, title="Summary model probabilities", font.size="small", single.row=TRUE,column.sep.width="1p")
+@
+
+% You can see that using only vh mutation status leads to a somewhat cloudy prediction with quite a lot of false positives. The genetic model (on the very top) as well as the combination of vh mutation status and genetic features lead to a more distinctive distribution, and fewer false positives.
+% 
+% \subsubsection{Generalization through machine learning}
+% Next we want to know how our model performs when applied more generally. In order to do that, we devide the data into a training data and a test data set an assess its performance.
+% As we do not have a validation data set, we will use a method called cross-validation (CV): We repeatedly (1000 times) choose a random subset of our data (about 10\%) to be left out and serve as a validation set, then calculate the error and variation from this.
+% \newpage
+% 
+% <<ML model performance, echo=FALSE, eval=TRUE>>=
+% source("/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v7/cv_logreg.R")
+% #make dataframe only with target columns
+% #GENETIC MODEL
+% genetic3_variables <- c("TP53_ALL", "ATM_bi", "Trisomy_12", "SAMHD1_ALL", "MRD")
+% genclinv6_genetic3 <- model.genclinv6[,colnames(model.genclinv6) %in% genetic3_variables]
+% rownames(genclinv6_genetic3) <- NULL
+% performance_genetic3 <- cv_logreg(genclinv6_genetic3)
+% @
+% 
+% <<fig=TRUE, echo=FALSE, width=7, height=4>>=
+% require(reshape2)
+% performance_genetic3.sum <- melt(performance_genetic3, id.vars=c("model.no"))
+% performance_genetic3.sum$variable <- as.factor(performance_genetic3.sum$variable)
+% 
+% ggplot(performance_genetic3.sum, aes(x=variable, y=value))+
+%   geom_boxplot(colour=c("firebrick4", "green",  "darkolivegreen", "firebrick1","darkgrey"), outlier.shape = NA)+
+%   geom_point(position = position_jitter(w = 0.1), alpha=0.02)+
+%   ylab("Fraction of total no of patients in test set")+
+%   ggtitle("Repeated random sub-sampling for genetic data in log regression model,\nnrepeat=1000")+
+%   ylim(c(0, 1))
+% @
+% 
+% <<ML model performance, echo=FALSE, eval=TRUE>>=
+% source("/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v7/cv_logreg.R")
+% #make dataframe only with target columns
+% #VHMUT MODEL
+% vhmut_variables <- c("vh_mutation_status", "MRD")
+% vhmut_performancedata <- model.genclinv6.vhmut[,colnames(model.genclinv6.vhmut) %in% vhmut_variables]
+% rownames(vhmut_performancedata) <- NULL
+% performance_vhmut <- cv_logreg(vhmut_performancedata)
+% @
+% 
+% <<fig=TRUE, echo=FALSE, width=7, height=4>>=
+% require(reshape2)
+% performance_vhmut.sum <- melt(performance_vhmut, id.vars=c("model.no"))
+% performance_vhmut.sum$variable <- as.factor(performance_vhmut.sum$variable)
+% 
+% ggplot(performance_vhmut.sum, aes(x=variable, y=value))+
+%   geom_boxplot(colour=c("firebrick4", "green",  "darkolivegreen", "firebrick1","darkgrey"),outlier.shape = NA)+
+%   geom_point(position = position_jitter(w = 0.1), alpha=0.02)+
+%   ylab("Fraction of total no of patients in test set")+
+%   ggtitle("Repeated random sub-sampling for vhmut data in log regression model,\nnrepeat=1000")+
+%   ylim(c(0, 1))
+% @
+% 
+% <<ML model performance, echo=FALSE, eval=TRUE>>=
+% source("/home/andreas/suska/work/01_HICF1/HICF1_sub1/trunk/HICF1_v7/cv_logreg.R")
+% #make dataframe only with target columns
+% #VHMUT+GENETIC MODEL
+% vhmutgenetic_variables <- c("TP53_ALL", "ATM_bi", "Trisomy_12", "SAMHD1_ALL","vh_mutation_status", "MRD")
+% vhmutgenetic_performancedata <- model.genclinv6.vhmut[,colnames(model.genclinv6.vhmut) %in% vhmutgenetic_variables]
+% rownames(vhmutgenetic_performancedata) <- NULL
+% performance_vhmutgenetic <- cv_logreg(vhmutgenetic_performancedata)
+% @
+% 
+% <<fig=TRUE, echo=FALSE, width=7, height=4>>=
+% require(reshape2)
+% performance_vhmutgenetic.sum <- melt(performance_vhmutgenetic, id.vars=c("model.no"))
+% performance_vhmutgenetic.sum$variable <- as.factor(performance_vhmutgenetic.sum$variable)
+% 
+% ggplot(performance_vhmutgenetic.sum, aes(x=variable, y=value))+
+%   geom_boxplot(colour=c("firebrick4", "green",  "darkolivegreen", "firebrick1","darkgrey"),outlier.shape = NA)+
+%   geom_point(position = position_jitter(w = 0.1), alpha=0.02)+
+%   ylab("Fraction of total no of patients in test set")+
+%   ggtitle("Repeated random sub-sampling for vhmutgenetic data in log regression model,\nnrepeat=1000")+
+%   ylim(c(0, 1))
+% @
+% \newpage
+% This is basically the same data displayed for all three models in one graph for better comparison. You can see that the genetic model performs similar to the vh mutation, with the ADVANTAGE of classifying all the patients,It is also slightly more reliable in picking up true MRD positives (truenegative) and MRD negatives (truepositives). All three models have quite some error(ranging beyond the 50\% mark, which is guessing), so the take home message here should be: The genetic testing performs AS GOOD AS vh mutation status, but includes all patients.
+% 
+% <<fig=TRUE, echo=FALSE, width=9, height=6>>=
+% library(reshape2)
+% library(plyr)
+% combined_models <- ldply(list(genetic3=performance_genetic3.sum, vhmut = performance_vhmut.sum, geneticvhmut=performance_vhmutgenetic.sum))
+% ggplot(combined_models, aes(variable, value, dodge = .id, colour=.id)) +
+%   geom_boxplot(position = position_dodge(width = 0.8),outlier.shape = NA)+
+%   ggtitle("Comparison of model performance")
+% @
+% \newpage
+
+\section{Progression Free Survival}
+
+\subsection{MRD as Proxy for PFS}
+We first assess if MRD is a good proxy for survival via simple univariate testing:\\
+<<fig=TRUE, echo=FALSE, eval=TRUE, width=9, height=5>>=
+genclinv7.pfs <- subset(genclinv7,!is.na(genclinv7$Time_to_progression)& !is.na(genclinv7$MRD))
+genclinv7.pfs$progress_or_death <- as.factor(genclinv7.pfs$progress_or_death)
+levels(genclinv7.pfs$progress_or_death) <- c("progressed", "not_progr")
+genclinv7.pfs$Censoring <- as.factor(genclinv7.pfs$Censoring)
+pfs.test <- wilcox.test(Time_to_progression~MRD, data=genclinv7.pfs)
+p.pfs<- round(pfs.test$p.value, 2)
+
+ggplot(data=genclinv7.pfs)+
+  geom_boxplot(aes(x=MRD, y=Time_to_progression), alpha=0.5)+
+  geom_point(aes(x=MRD, y=Time_to_progression, colour=ATM_bi, size=TP53_ALL, alpha=progress_or_death,shape=trisomy_12 ), position=position_jitter(w=0.2, h=0))+
+  scale_colour_manual(values=c("red","blue"))+
+  scale_alpha_manual(values=c(0.4, 1))+
+  scale_size_manual(values=c(4, 8))+
+  scale_fill_manual(values=c("white", "lightgreen"))+
+  annotate("text", label=paste("Wilcoxon Test, n=104, p=", p.pfs), x=1.5, y=1300)+
+  theme_bw()
+@
+
+<<chisq pfs, echo=FALSE, eval=TRUE>>=
+MRDtable <- table(genclinv7.pfs$MRD, genclinv7.pfs$progress_or_death)
+MRD.test <- chisq.test(MRDtable)
+p.MRD <- round(MRD.test$p.value, 3)
+@
+
+<<fig=TRUE, echo=FALSE, eval=TRUE, width=8, height=4>>=
+MRDtable <- as.data.frame(MRDtable)
+colnames(MRDtable) <- c("MRD", "progression", "freq")
+levels(MRDtable$progression) <- c("progressed", "not_progressed")
+ggplot(data=MRDtable)+
+geom_bar(aes(x=MRD, y=freq, fill=progression), stat="identity", position="dodge")+
+  scale_fill_manual(values=c("black", "darkgrey"))+
+  theme_bw()+
+  ylab("Number of patients")+
+  annotate("text", label=paste("Chisquare test, p=", p.MRD), x=2, y=40)
+@
+
+\\ We can conclude that MRD is a good proxy for PFS.\\
+Next, we want to check if progression is biased towards a certain gender or age:\\
+<<fig=TRUE, echo=FALSE, eval=TRUE, width=9, height=5>>=
+genclinv7.surv <- subset(genclinv7, !is.na(genclinv7$Time_to_progression))
+genclinv7.surv$progress_or_death <- as.factor(genclinv7.surv$progress_or_death)
+genclinv7.surv$Censoring <- as.factor(genclinv7.surv$Censoring)
+ggplot(data=genclinv7.surv)+
+  geom_point(aes(x=age_at_randomisation, y=Time_to_progression, size=progress_or_death, colour=patient_gender ))+
+scale_colour_manual(values=c("red","blue"))+
+  scale_alpha_manual(values=c(0.4, 1))+
+  scale_size_manual(values=c(8, 4))+
+  scale_fill_manual(values=c("white", "lightgreen"))
+@
+\\Fortunately, this is not the case, although we have double thenumber of males compared to females, both age and gender does not confound with pregression and time to progression.
+\subsection{Cox Hazard Regression Model}
+First, we plot all our data to see how it looks like in a Kaplan-Meier Curve:\\
+<<Kaplan Meier estimates, eval=TRUE, echo=FALSE, results=hide>>=
+library(survival)
+genclinv7.surv <- subset(genclinv7, !is.na(genclinv7$Time_to_progression))
+surv.model <-coxph(Surv(Time_to_progression, Censoring) ~ TP53_ALL+ATM_bi+SAMHD1_ALL+trisomy_12, data=genclinv7.surv) 
+@
+
+<<stargazer,echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(stargazer)
+stargazer(surv.model, summary=FALSE, title="Survival model", font.size="small", single.row=TRUE, model.numbers=FALSE, notes.align="l", digits=2)
+@
+
+<<fig=TRUE, eval=TRUE, echo=FALSE>>=
+plot(survfit(surv.model), xlab="Progression free survival", ylab="Proportion of Patients")
+@
+\\We fitted a Cox Proportional Hazard Model using the survival package (R), with TP53, ATM biallelic, SAMHD1 and trisomy 12 as predictors.\\
+<<survival model, echo=FALSE, eval=TRUE>>=
+survfit <- survfit(Surv(Time_to_progression, Censoring) ~ TP53_ALL+SAMHD1_ALL+trisomy_12+ATM_bi, data=genclinv7.surv)
+@
+\\
+<<fig=TRUE, echo=FALSE, eval=TRUE>>=
+plot(survfit, col=c("black","darkred", "darkgreen", "blue", "orange"), xlab="Progression free survival (days)", ylab="Proportions of patients")
+@
+\newpage
+For TP53\\\
+<<survival model, echo=FALSE, eval=TRUE>>=
+survfit.TP53 <- survfit(Surv(Time_to_progression, Censoring) ~ TP53_ALL, data=genclinv7.surv)
+@
+\\
+<<fig=TRUE, echo=FALSE, eval=TRUE>>=
+plot(survfit.TP53, col=c("black", "orange"), xlab="Progression free survival (days)", ylab="Proportions of patients")
+@
+\newpage
+For SAMHD1\\\
+<<survival model, echo=FALSE, eval=TRUE>>=
+survfit.SAMHD1 <- survfit(Surv(Time_to_progression, Censoring) ~SAMHD1_ALL, data=genclinv7.surv)
+@
+\\
+<<fig=TRUE, echo=FALSE, eval=TRUE>>=
+plot(survfit.SAMHD1, col=c("black", "blue"), xlab="Progression free survival (days)", ylab="Proportions of patients")
+@
+\newpage
+For Trisomy 12\\\
+<<survival model, echo=FALSE, eval=TRUE>>=
+survfit.tri <- survfit(Surv(Time_to_progression, Censoring) ~trisomy_12, data=genclinv7.surv)
+@
+\\
+<<fig=TRUE, echo=FALSE, eval=TRUE>>=
+plot(survfit.tri, col=c("black","darkgreen"), xlab="Progression free survival (days)", ylab="Proportions of patients")
+@
+\newpage
+For ATM bi\\\
+<<survival model, echo=FALSE, eval=TRUE>>=
+survfit.ATM_bi <- survfit(Surv(Time_to_progression, Censoring) ~ATM_bi, data=genclinv7.surv)
+@
+\\
+<<fig=TRUE, echo=FALSE, eval=TRUE>>=
+plot(survfit.ATM_bi, col=c("black","darkred"), xlab="Progression free survival (days)", ylab="Proportions of patients")
+@
+\subsection{Logistic regression for patients with survival data}
+We can now use the subset of patients for which we have both MRD and PFS data to compare the logistic regression models.\\
+The first model uses MRD as response variable and is comparable to the models that we built with the whole data set. The second model uses Progression as response variable. The third model (Combi) uses Progression as response, but includes MRD as predictor.\\
+We can see that using MRD as response is fairly unstable and does not give a good prediction with this small data set. Combining both MRD and genetic data however seems to be a very good predictor for progression. Note that we have quite a number of patients with ATM bi that are MRD positive, but did not progress (yet).
+<<logreg surv, echo=FALSE, eval=TRUE>>=
+fit.survlogreg <-glm(MRD ~ TP53_ALL+
+                        ATM_bi+
+                        trisomy_12+
+                        SAMHD1_ALL
+                        
+                        , family=binomial(logit), data=genclinv7.pfs)
+
+genclinv7.pfs$predict <- predict(fit.survlogreg, type="response")
+
+#Turn around levels of progression factor for clearer results:
+genclinv7.pfs$progress_or_death <- as.numeric(genclinv7.pfs$progress_or_death)
+genclinv7.pfs$progress_or_death <- as.factor(ifelse(genclinv7.pfs$progress_or_death==1, 2, 1))
+genclinv7.pfs$progress_or_death <- as.factor(ifelse(genclinv7.pfs$progress_or_death=="1","not_progr", "progressed"))
+
+fit.survlogreg.event <-glm(progress_or_death ~ TP53_ALL+
+                        ATM_bi+
+                        trisomy_12+
+                        SAMHD1_ALL
+                        
+                        , family=binomial(logit), data=genclinv7.pfs)
+
+genclinv7.pfs$predict.event <- predict(fit.survlogreg.event, type="response")
+
+fit.survlogreg.combi <- glm(progress_or_death ~ TP53_ALL+
+                        ATM_bi+
+                        trisomy_12+
+                        SAMHD1_ALL+
+                        MRD
+
+                        
+                        , family=binomial(logit), data=genclinv7.pfs)
+genclinv7.pfs$predict.combi <- predict(fit.survlogreg.combi, type="response")
+@
+
+<<fig=TRUE, echo=FALSE, eval=TRUE,width=9, height=5>>=
+ggplot(data=genclinv7.pfs)+
+geom_point(aes(x=MRD, y=predict, size=TP53_ALL, colour=BIRC3_mono, shape=trisomy_12, alpha=SAMHD1_ALL, fill=ATM_bi),position=position_jitter(w=0.3, h=0))+
+  scale_alpha_manual(values=c(1, 0.4))+
+  scale_size_manual(values=c(3,6))+
+  scale_colour_manual(values=c("darkgreen", "red"))+
+  scale_fill_manual(values=c("white", "blue"))+
+  scale_shape_manual(values=c(21, 23))+
+  theme_bw()+
+  ggtitle("Predicting MRD with genetic data only\nPredicted probabilities for MRD positivity, n=104")+
+  ylim(c(0,1))+
+  geom_hline(y=0.5, linetype=3, colour="darkred", alpha=0.5)
+@
+
+<<fig=TRUE, echo=FALSE, eval=TRUE, width=9, height=5>>=
+ggplot(data=genclinv7.pfs)+
+geom_point(aes(x=progress_or_death, y=predict.event, size=TP53_ALL, colour=BIRC3_mono, shape=trisomy_12, alpha=SAMHD1_ALL, fill=ATM_bi),position=position_jitter(w=0.3, h=0))+
+  scale_alpha_manual(values=c(1, 0.4))+
+  scale_size_manual(values=c(3,6))+
+  scale_colour_manual(values=c("darkgreen", "red"))+
+  scale_fill_manual(values=c("white", "blue"))+
+  scale_shape_manual(values=c(21, 23))+
+  theme_bw()+
+  ggtitle("Predicting Progression with genetic data only\nPredicted probabilities for Progression, n=104")+
+  ylim(c(0,1))+
+  geom_hline(y=0.5, linetype=3, colour="darkred", alpha=0.5)
+@
+
+<<fig=TRUE, echo=FALSE, eval=TRUE, width=9, height=5>>=
+ggplot(data=genclinv7.pfs)+
+geom_point(aes(x=progress_or_death, y=predict.combi, size=TP53_ALL, colour=MRD, shape=trisomy_12, alpha=SAMHD1_ALL, fill=ATM_bi),position=position_jitter(w=0.3, h=0))+
+  scale_alpha_manual(values=c(1, 0.4))+
+  scale_size_manual(values=c(3,6))+
+  scale_colour_manual(values=c("darkgreen", "red"))+
+  scale_fill_manual(values=c("white", "blue"))+
+  scale_shape_manual(values=c(21, 23))+
+  theme_bw()+
+  ggtitle("Predicting Progression with MRD & genetic data\nPredicted probabilities for Progression, n=104")+
+  ylim(c(0,1))+
+  geom_hline(y=0.5, linetype=3, colour="darkred", alpha=0.5)
+@
+
+<<stargazer,echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(stargazer)
+stargazer(fit.survlogreg, fit.survlogreg.event, fit.survlogreg.combi, summary=FALSE, title="Compare MRD and Progression Models, n=104", font.size="small", single.row=TRUE, column.labels=c("MRD", "Progression", "Combi"), model.numbers=FALSE, notes.align="l", digits=2)
+@
+
+<<missclasserror pfs,echo=FALSE, eval=TRUE>>=
+missclasserror.pfs<- data.frame(matrix(NA, nrow = 3, ncol = 6))
+colnames(missclasserror.pfs) <- c("model", "correct_MRD_neg","false_MRD_neg", "correct_MRD_pos", "false_MRD_pos", "missclasserr")
+missclasserror.pfs$model <- c("fit.survlogreg", "fit.survlogreg.event","fit.survlogreg.combi")
+
+pfs.models <- list(fit.survlogreg, fit.survlogreg.event,fit.survlogreg.combi)
+genclinv7.pfs[,c(57:62)] <- NA
+genclinv7.missclass <- genclinv7.pfs[,c(1:56)]
+genclinv7.missclass[,c(57:62)] <- NA
+for (i in 1:3){
+genclinv7.missclass[56+i] <- predict(pfs.models[[1]], type="response")
+if (i==1){
+genclinv7.missclass[59+i] <- ifelse(genclinv7.missclass[56+i] > 0.5, "MRD positive", "MRD negative")
+missclasserror.pfs$correct_MRD_neg[i] <- table(genclinv7.missclass$MRD, genclinv7.missclass[,59+i])[1]
+missclasserror.pfs$false_MRD_neg[i] <- table(genclinv7.missclass$MRD, genclinv7.missclass[,59+i])[2]
+missclasserror.pfs$correct_MRD_pos[i] <- table(genclinv7.missclass$MRD, genclinv7.missclass[,59+i])[4]
+missclasserror.pfs$false_MRD_pos[i] <- table(genclinv7.missclass$MRD, genclinv7.missclass[,59+i])[3]
+missclasserror.pfs$missclasserr[i] <- (missclasserror.pfs$false_MRD_pos[i]+missclasserror.pfs$false_MRD_neg[i])/104
+}
+else{
+genclinv7.missclass[59+i] <- ifelse(genclinv7.missclass[56+i] > 0.5, "progressed", "not_progr")
+missclasserror.pfs$correct_MRD_neg[i] <- table(genclinv7.missclass$progress_or_death, genclinv7.missclass[,59+i])[1]
+missclasserror.pfs$false_MRD_neg[i] <- table(genclinv7.missclass$progress_or_death, genclinv7.missclass[,59+i])[2]
+missclasserror.pfs$correct_MRD_pos[i] <- table(genclinv7.missclass$progress_or_death, genclinv7.missclass[,59+i])[4]
+missclasserror.pfs$false_MRD_pos[i] <- table(genclinv7.missclass$progress_or_death, genclinv7.missclass[,59+i])[3]
+missclasserror.pfs$missclasserr[i] <- (missclasserror.pfs$false_MRD_pos[i]+missclasserror.pfs$false_MRD_neg[i])/104
+}
+}
+colnames(missclasserror.pfs) <- c("model", "true positive", "false positive", "true negative", "false negative", "missclasserr")
+@
+
+<<echo=FALSE, results=tex>>=
+#RESULT TABLE in a nice format!
+library(stargazer)
+stargazer(missclasserror.pfs, summary=FALSE, title="Missclassification for pfs models, n=104", font.size="tiny", single.row=TRUE,column.sep.width="1p")
+@
+\pagebreak
+\section{Patient distributions}
+You can use this part of the script to generate a nice distribution of patients by filtering for specific traits first, then ordering by these traits in the order you desire.\\
+\begin{center}
+<<fig=TRUE, echo=FALSE, eval=TRUE, width=9, height=6>>=
+#select all important variables
+genclinv7.surv.heat <- subset(genclinv7.surv, select=c("progress_or_death","MRD","TP53_ALL", "TP53_mut", "ATM_bi", "ATM_mut", "ATM_ALL", "BIRC3_del", "BIRC3_mono", "SAMHD1_ALL", "trisomy_12" ))
+
+genclinv7.surv.heat <- genclinv7.surv.heat[order(genclinv7.surv.heat$progress_or_death, genclinv7.surv.heat$TP53_ALL, genclinv7.surv.heat$ATM_bi, genclinv7.surv.heat$BIRC3_mono, genclinv7.surv.heat$SAMHD1_ALL, genclinv7.surv.heat$trisomy_12),]
+
+genclinv7.surv.heat <- as.data.frame(lapply(genclinv7.surv.heat, as.numeric))
+
+tgenclinv7.surv.heat <- t(genclinv7.surv.heat)
+library(gplots)
+heatmap.2((as.matrix(tgenclinv7.surv.heat, row.names.force = TRUE)), symm = FALSE, 
+          col = redblue(100),#change the color here!
+scale = "none", key = FALSE, symkey = FALSE, density.info = "histogram", na.rm = TRUE, trace = "none", cexRow = 0.7, cexCol = 0.4, Rowv = FALSE, Colv = FALSE, na.color = "white", main = "n=118",   xlab = "samples")
+@
+\end{center}
+\end{document}
+

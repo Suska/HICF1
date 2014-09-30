@@ -1,0 +1,12 @@
+\contentsline {section}{\numberline {1}Methods and Programmes used}{1}
+\contentsline {section}{\numberline {2}Univariate Analysis}{1}
+\contentsline {section}{\numberline {3}Associations}{2}
+\contentsline {subsection}{\numberline {3.1}Multiple logistic regression models}{6}
+\contentsline {subsection}{\numberline {3.2}Missclassification Error}{7}
+\contentsline {subsubsection}{\numberline {3.2.1}Model probabilities}{7}
+\contentsline {subsection}{\numberline {3.3}Model Accuracy}{10}
+\contentsline {section}{\numberline {4}Progression Free Survival}{11}
+\contentsline {subsection}{\numberline {4.1}MRD as Proxy for PFS}{11}
+\contentsline {subsection}{\numberline {4.2}Cox Hazard Regression Model}{12}
+\contentsline {subsection}{\numberline {4.3}Logistic regression for patients with survival data}{17}
+\contentsline {section}{\numberline {5}Patient distributions}{19}
